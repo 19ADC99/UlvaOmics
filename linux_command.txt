@@ -1,0 +1,86 @@
+1. To grep only cds in gff file
+awk '$3 == "CDS" {print $0}' KP720617.gff > KP720617_cdsonly.gff
+or grep and pipe the command
+grep "CDS" NC_053255.gff | bedtools getfasta -fi NC_053255.fasta -bed NC_053255.gff -fo results
+
+2. Loop to do this to all the files in the folder
+
+#why $basename() here?
+for file in *.fasta; do 
+	echo $file
+	BASENAME="${file%.*}"
+	grep "CDS" $BASENAME.gff | wc -l
+	grep "CDS" $BASENAME.gff > $BASENAME.cds.gff
+	bedtools getfasta -fi $file -bed $BASENAME.cds.gff -fo $BASENAME.cds.fasta; done
+
+
+#get sequence length > 200
+awk 'BEGIN{FS="[> ]"} /^>/{val=$2;next}  {print val,length($0)}'   Input_file
+out put:
+seq1 6
+seq2 7
+seq3 4
+
+awk 'BEGIN{FS="[> ]"} /^>/{val=$2;next}  {if (length($0) >200) {print val, length($0), "\n", $0}}' LC507117.cds.fasta
+
+
+
+######## MT GENOMES
+# select mt genes
+cut -f 9 *.gff | sed "s/Name=//g" | sed "s/ .*//g" |  sed "s/ATP/atp/g" | sed "s/NAD/nad/"  | grep "atp\|cob\|cox\|nad\|rpl\|rps" | sort -u > gene_list.lst
+
+# replace ATP with atp and NAD with nad
+for file in ./*; do  sed -i "s/ATP/atp/g" $file; sed -i "s/NAD/nad/" $file; done
+
+# get the gene-wise fasta sequences
+while read GENE; do
+	for file in *[0-9].fasta; do
+		grep $GENE $(basename $file .fasta).cds.gff > tmp.gff;
+		bedtools getfasta -fi $file -bed tmp.gff | tr ":" " ";
+	done > mt.$GENE.nt.fa;
+	rm tmp.gff;
+done < gene_list.lst
+	
+
+
+Feature (KU182748:61700-62486) beyond the length of KU182748 size (62022 bp).  Skipping.
+
+
+for file in mt.*.nt.fa; do ../faTrans $file $(basename $file .nt.fa).aa.fa; done
+
+grep "*" *.aa.fa
+
+add cox3 pr sequence KU182748
+nad5 >NC_053255
+
+
+######## CP GENOMES
+# select cp genes
+cut -f 9 *.gff | sed "s/Name=//g" | sed "s/ .*//g" | grep "accD\|atp\|ccsA\|cemA\|chlI\|clpP\|ftsH\|infA\|pafI\|pbf1\|pet\|psa\|psb30\|psb\|rbcL\|rnl\|rns\|rpl\|rpo\|rps\|rrn5\|tufA\|ycf" | sort -u > gene_list.lst
+
+# get the gene-wise fasta sequences
+while read GENE; do
+	for file in *[0-9].fasta; do
+		grep $GENE $(basename $file .fasta).cds.gff > tmp.gff;
+		bedtools getfasta -fi $file -bed tmp.gff | tr ":" " ";
+	done > cp.$GENE.nt.fa;
+	rm tmp.gff;
+done < gene_list.lst
+
+
+
+# get the gene-wise fasta sequences
+while read GENE; do for file in *[0-9].fasta; do grep $GENE $(basename $file .fasta).cds.gff > tmp.gff; bedtools getfasta -fi $file -bed tmp.gff | tr ":" " "; done > cp.$GENE.fa; rm tmp.gff; done < gene_list.lst
+
+		
+		
+for file in cp.*.nt.fa; do ../faTrans $file $(basename $file .nt.fa).aa.fa; done		
+		
+grep "*" *.aa.fa
+		
+		
+
+
+
+		python3.10 combinatorial_ML_phylogeny.py --infolder "ANALYSES_AND_RESULTS/
+09_combinatorial_phylogeny/00_cp_genes/,ANALYSES_AND_RESULTS/09_combinatorial_phylogeny/00_mt_genes/" --names "CP,MT" --iqtree /home/Andrea/Desktop/ANALYSES_AND_RESULTS/bin/iqtree-2.2.0-Linux/bin/iqtree2 --n_genes 10 --outdir /home/Andrea/Desktop/CP_MT/ANALYSES_AND_RESULTS/09_combinatorial_phylogeny/
