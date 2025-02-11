@@ -1,0 +1,882 @@
+# Data Exploration - Kidney Cancer
+
+```{r, echo=FALSE, include=FALSE}
+# load required libraries
+up_packages = c("cowplot", "data.table", "dplyr", "DT", "edgeR", "forcats", "ggplot2",
+                "grid", "gridExtra", "matrixStats", "RColorBrewer", "scales", "stringr",
+                "umap", "vcd")
+lapply(up_packages, require, character.only = TRUE)
+
+# set working directory
+mainDir = "/home/andrea/19ADC99/cancer_code"
+knitr::opts_knit$set(root.dir = mainDir)
+
+# source custom functions
+source("utils.R")
+```
+
+
+
+
+## On this page
+
+Biological insights and take-home messages are at the bottom of the page at Lesson Learnt: @sec-lesson-learnt-dataset-exploration.
+
+* Here we focus on samples from Kidney Cancers patients and their overall relationships.
+* We then explore the association between each Kidney Cancer subtype and the major clinical covariates (e.g.: sex, disease status, cancer stage, clinical outcome).
+
+
+## Selection of Kidney samples
+
+For the next sections, we will focus on kidney cancer. The choice is simply dictated by the abundance of samples which provide us a large playground to test different strategies for biomarker discovery, higher statistical power, and the existance of some [Molecular Subtypes gene signatures](https://genomemedicine.biomedcentral.com/articles/10.1186/s13073-022-01105-y) that we can use as a benchmark and we can try to improve upon.
+
+Let's select and explore the samples available for Kidney tissue.
+
+
+```{r, echo=FALSE, warning=FALSE}
+
+# import tables
+metadata_allsamples = utils::read.delim("./data/TCGA_PanCan_metadata.allsamples.csv", header = TRUE, sep = ",")
+metadata_cancersubtype = utils::read.delim("./data/TCGA_PanCan_metadata.cancer_subtype.tsv", header = TRUE, sep = "\t")
+metadata_immunemodel = utils::read.delim("./data/TCGA_PanCan_metadata.immune_model.tsv", header = TRUE, sep = "\t")
+metadata_survival = utils::read.delim("./data/TCGA_PanCan_metadata.survival.tsv", header = TRUE, sep = "\t")
+
+# reformat metadata
+metadata_allsamples_fltr = metadata_allsamples %>%
+   dplyr::select(c(
+      "cgc_sample_id_1_1",
+      "cgc_case_primary_site_1_1",
+      "gdc_center.name_1_1",
+      "gdc_center.short_name_1_1",
+      "gdc_cases.submitter_id_1_1",
+      "gdc_cases.demographic.gender_1_1",
+      "gdc_cases.demographic.year_of_birth_1_1",
+      "gdc_cases.demographic.race_1_1",
+      "gdc_cases.demographic.ethnicity_1_1",
+      "gdc_cases.project.project_id_1_1",
+      "gdc_cases.tissue_source_site.project_1_1",
+      "gdc_cases.diagnoses.tumor_stage_1_1",
+      "gdc_cases.diagnoses.age_at_diagnosis_1_1",
+      "gdc_cases.samples.sample_type_1_1",
+      "gdc_cases.exposures.cigarettes_per_day_1_1",
+      "cgc_slide_percent_normal_cells_1_1",
+      "cgc_slide_percent_tumor_cells_1_1",
+      "cgc_slide_percent_tumor_nuclei_1_1",
+      "cgc_slide_percent_monocyte_infiltration_1_1",
+      "cgc_slide_percent_lymphocyte_infiltration_1_1",
+      "cgc_slide_percent_stromal_cells_1_1",
+      "cgc_slide_percent_necrosis_1_1",
+      "cgc_slide_percent_neutrophil_infiltration_1_1",
+      "cgc_sample_country_of_sample_procurement_1_1",
+      "cgc_case_primary_therapy_outcome_success_1_1",
+      "cgc_case_prior_diagnosis_1_1",
+      "cgc_case_pathologic_n_1_1",
+      "cgc_case_histological_diagnosis_1_1",
+      "cgc_case_clinical_stage_1_1",
+      "cgc_case_pathologic_stage_1_1",
+      "cgc_case_pathologic_t_1_1",
+      "cgc_drug_therapy_pharmaceutical_therapy_type_1_1",
+      "cgc_radiation_therapy_radiation_type_1_1",
+      "cgc_radiation_therapy_radiation_therapy_site_1_1",
+      "cgc_follow_up_new_tumor_event_after_initial_treatment_1_1",
+      "cgc_follow_up_tumor_status_1_1",
+      "xml_histological_type_1_1",
+      "xml_primary_lymph_node_presentation_assessment_1_1",
+      "xml_lymph_node_examined_count_1_1",
+      "xml_number_of_lymphnodes_positive_by_he_1_1",
+      "xml_tobacco_smoking_history_1_1",
+      "xml_stopped_smoking_year_1_1",
+      "xml_number_pack_years_smoked_1_1",
+      "xml_targeted_molecular_therapy_1_1",
+      "xml_primary_therapy_outcome_success_1_1",
+      "xml_stage_event_pathologic_stage_1_1",
+      "xml_breast_carcinoma_progesterone_receptor_status_1_1",
+      "xml_margin_status_1_1",
+      "xml_breast_carcinoma_estrogen_receptor_status_1_1"
+    )) %>% 
+  dplyr::rename("sample" = "cgc_sample_id_1_1") %>%
+  dplyr::mutate(dplyr::across("sample", \(x) gsub(".{1}$", "", x)))
+
+metadata_cancersubtype = metadata_cancersubtype %>% 
+  dplyr::rename("sample" = "sampleID")
+
+metadata_survival_fltr = metadata_survival %>%
+   dplyr::select(-c(
+     "X_PATIENT",
+     "cancer.type.abbreviation",
+     "age_at_initial_pathologic_diagnosis",
+     "gender",
+     "race",
+     "birth_days_to", 
+     "last_contact_days_to"
+   ))
+
+# merge
+metadata = Reduce(
+  function(...) left_join(..., by = "sample"),
+  list(
+    metadata_allsamples_fltr,
+    metadata_cancersubtype,
+    metadata_immunemodel,
+    metadata_survival_fltr
+))
+# adjust NAs
+metadata[metadata == "NA"] = NA
+
+# select Kidney and drop duplicates
+metadata = metadata %>%
+  dplyr::filter(cgc_case_primary_site_1_1 == "Kidney") %>%
+  dplyr::distinct(.keep_all = TRUE) %>%
+  dplyr::filter(!row_number() %in% c(45, 259, 370, 501))
+
+```
+
+
+
+### General Overview of the Dataset {#sec-UMAP-unfiltered}
+
+To have a first overview of all the Kidney samples, we will plot a UMAP based on the gene expression of all the biopsys. A [UMAP](https://umap-learn.readthedocs.io/en/latest/how_umap_works.html) is an algorithm for dimension reduction based on manifold learning techniques and ideas from topological data analysis. The [UMAP algorithm](https://arxiv.org/abs/1802.03426) first constructs a weighted graph of the data in input (with N-dimensions), where the weight in the graph edge corresponds to how similar is a point (i.e.: sample) to the next one, and then projects this similarity graph into a bi-dimensional space. The 2-D projection is optimized to faithfully represents the relationships between the points in the N-dimensional space.
+
+To build the UMAP, we focus on the 1,000 top most variable genes between the transcriptomics samples. This allows us to maximize similarities and differences between sample groups (if any).
+
+
+
+```{r, echo=FALSE, warning=FALSE}
+
+# import table
+raw_counts = BiocGenerics::as.data.frame(data.table::fread("./data/TCGA_PanCan_data.RNAseq.tsv", header = TRUE, sep = "\t"))
+
+# avergae counts from genes with the same name
+raw_counts = rowmean(raw_counts[, c(2:ncol(raw_counts))], group = raw_counts$sample)
+
+### WARNING!
+# These names are duplicated:
+# * "TCGA-21-1076-01" at locations 3745 and 3746.
+# * "TCGA-DD-AACA-02" at locations 5181 and 5182.
+# * "TCGA-06-0156-01" at locations 6702 and 6703.
+# * "TCGA-06-0211-01" at locations 6716 and 6717.
+# * "TCGA-DU-6404-02" at locations 7622 and 7623.
+raw_counts = raw_counts[, -c(1, 3746, 5182, 6703, 6717, 7623)]
+raw_counts[is.na(raw_counts)] = 1E-33
+raw_counts = 2^raw_counts
+
+# synch samples in gene counts and metadata
+keep_samples = BiocGenerics::intersect(colnames(raw_counts), metadata$sample)
+raw_counts = raw_counts %>% dplyr::select(dplyr::any_of(keep_samples))
+# match data and metadata
+raw_counts = raw_counts[, match(metadata$sample, colnames(raw_counts))]
+
+```
+
+
+
+The UMAP of all the samples divides the biopsys into 4 major clusters. Three clusters are localized on the upper part of the UMAP, and they loosely correspond to the three cancer subtypes in this cohort: kidney chromophobe ([KICH](https://www.cancer.gov/ccg/research/genome-sequencing/tcga/studied-cancers/chromophobe-renal-cell-carcinoma-study)), kidney renal papillary cell carcinoma ([KIRP](https://www.cancer.gov/pediatric-adult-rare-tumor/rare-tumors/rare-kidney-tumors/papillary-renal-cell-carcinoma)), and kidney renal clear cell carcinoma ([KIRC](https://www.cancer.gov/pediatric-adult-rare-tumor/rare-tumors/rare-kidney-tumors/clear-cell-renal-cell-carcinoma)). A further separation of the samples is visible on the y axis: biopsys from primary tumor are localized on top of the UMAP, while a second cluster of normal solid tissue are localized in the bottom of the UMAP, containing samples from non-diseased tissues of patients of all of the three cancer types.
+
+
+
+
+```{r}
+#| echo: FALSE
+#| message: FALSE
+#| warning: FALSE
+#| fig.height: 9
+#| fig.cap: "Figure 1: Kidney UMAP - unfiltered data"
+
+
+# select top 1000 most variable genes
+top_var_genes_1k = raw_counts %>%
+  as.matrix() %>%
+  matrixStats::rowVars() %>%
+  sort(decreasing = TRUE) %>%
+  head(1000) %>% 
+  names()
+
+most_variable_1k = raw_counts %>%
+  as.data.frame() %>%
+  dplyr::filter(row.names(raw_counts) %in% top_var_genes_1k)
+
+# fit UMAP
+umap_fit = umap::umap(t(most_variable_1k))
+colnames(umap_fit$layout) = c("UMAP1", "UMAP2")
+umap_df = umap_fit$layout %>% as.data.frame()
+# add metadata
+umap_df$biopsys = metadata$gdc_cases.samples.sample_type_1_1
+umap_df$cancer_type = metadata$gdc_cases.project.project_id_1_1
+
+# plot
+p_cancer = ggplot(umap_df, aes(x = UMAP1, y = UMAP2)) +
+        geom_point(aes(color = biopsys, fill = biopsys),
+                   size = 2.5, alpha = 0.5) +
+        guides(color = guide_legend(override.aes = list(size = 4)),
+               fill = "none") +
+        labs(x = "UMAP1",
+             y = "UMAP2",
+             fill = "biopsys") +
+        theme(plot.title = element_blank(),
+              legend.position = "bottom", 
+              legend.background = element_rect(colour = "grey25", size = 0.5),
+              panel.background = element_rect(fill = NA, colour = "black"),
+              panel.grid.major = element_line(colour = "grey90"),
+              panel.grid.minor = element_line(colour = "grey90"))
+      
+p_cancer_type = ggplot(umap_df, aes(x = UMAP1, y = UMAP2)) +
+        geom_point(aes(color = cancer_type, fill = cancer_type),
+                   size = 2.5, alpha = 0.5) +
+        guides(color = guide_legend(override.aes = list(size = 4)),
+               fill = "none") +
+        scale_color_manual(values = c("hotpink4", "#F768A1", "grey65")) + 
+        labs(x = "UMAP1",
+             y = "UMAP2",
+             fill = "cancer type") +
+        theme(plot.title = element_blank(),
+              legend.position = "bottom", 
+              legend.background = element_rect(colour = "grey25", size = 0.5),
+              panel.background = element_rect(fill = NA, colour = "black"),
+              panel.grid.major = element_line(colour = "grey90"),
+              panel.grid.minor = element_line(colour = "grey90"))
+      
+## combine plots
+cowplot::plot_grid(
+  p_cancer, p_cancer_type, 
+  nrow = 2,
+  rel_heights = c(1, 1),
+  labels = NULL
+)
+
+```
+
+
+Since we want to focus on discovering new biomarkers for the three kidney cancer types, we will remove the biopsys from normal solid tissue. Then, we test if there is a strong imbalance between the sex and age of the subjects in the three kidney cancer cohorts, and wheter we should balance the cohorts or not.
+
+
+### Cohort filtering
+
+
+```{r, echo=FALSE, warning=FALSE}
+
+# keep only Primary Tumor samples
+metadata = metadata %>%
+  dplyr::filter(gdc_cases.samples.sample_type_1_1 == "Primary Tumor")
+
+# sync samples in gene counts and metadata  
+raw_counts = raw_counts %>% dplyr::select(dplyr::any_of(metadata$sample))
+raw_counts = raw_counts[, match(metadata$sample, colnames(raw_counts))]
+
+```
+
+
+First, we retain only biopsys from "Primary Tumor", removing "Solid Tissue Normal" and "Additional - New Primary" neoplasis. Then we look at the distribution of age, sex and ethnicity in the three different cancer cohorts.
+
+
+
+```{r}
+#| echo: FALSE
+#| message: FALSE
+#| warning: FALSE
+#| fig.height: 9
+#| fig.cap: "Figure 2: Kidney Cancer: demographic overview"
+
+
+## barplot age
+df_age = metadata[, c(
+  "gdc_cases.demographic.gender_1_1",
+  "gdc_cases.project.project_id_1_1"
+  )] %>%
+  table() %>%
+  prop.table(., 2) %>%
+  as.data.frame() %>%
+  dplyr::mutate(perc = round(Freq*100, 1)) %>%
+  dplyr::select(-c("Freq"))
+
+colnames(df_age) = c("sex", "cancer_type", "perc")
+
+bar_age = ggplot(df_age, aes(x = cancer_type, y = perc, fill = sex, color = sex)) +
+  geom_bar(stat = "identity", alpha = 0.5) +
+  scale_color_manual(values = c("lightpink1", "cyan3")) +
+  scale_fill_manual(values = c("lightpink1", "cyan3")) +
+  coord_flip(expand = FALSE) +
+  theme(title = element_blank(),
+        axis.text.x = element_text(size = 16, angle = 90, vjust = 0.5),
+        axis.text.y = element_text(size = 16),
+        axis.title = element_blank(),
+        legend.position = "bottom",
+        panel.background = element_rect(colour = "black", fill = NA),
+        panel.grid.major.x = element_line(colour = "grey75", linetype = "dashed"),
+        panel.grid.minor = element_blank())
+
+## barplot race
+df_race = metadata[, c(
+  "gdc_cases.demographic.race_1_1",
+  "gdc_cases.project.project_id_1_1"
+  )] %>%
+  table() %>%
+  prop.table(., 2) %>%
+  as.data.frame() %>%
+  dplyr::mutate(perc = round(Freq*100, 1)) %>%
+  dplyr::select(-c("Freq"))
+
+colnames(df_race) = c("race", "cancer_type", "perc")
+
+bar_race = ggplot(df_race, aes(x = cancer_type, y = perc, fill = race, color = race)) +
+  geom_bar(stat = "identity", alpha = 0.5) +
+  scale_color_manual(values = c("#9edbee", "#dbee9e", "#ee9edb", "#eeeeee", "#9eb3ee", "#ffdb32")) +
+  scale_fill_manual(values = c("#9edbee", "#dbee9e", "#ee9edb", "#eeeeee", "#9eb3ee", "#ffdb32")) +
+  coord_flip(expand = FALSE) +
+  theme(title = element_blank(),
+        axis.text.x = element_text(size = 16, angle = 90, vjust = 0.5),
+        axis.text.y = element_text(size = 16),
+        axis.title = element_blank(),
+        legend.position = "bottom",
+        panel.background = element_rect(colour = "black", fill = NA),
+        panel.grid.major.x = element_line(colour = "grey75", linetype = "dashed"),
+        panel.grid.minor = element_blank())
+  
+## histogram of age of subjects
+mu_age_M = metadata %>%
+  dplyr::filter(gdc_cases.demographic.gender_1_1 == "male") %>%
+  dplyr::group_by(gdc_cases.project.project_id_1_1) %>%
+  dplyr::summarize(Mean = mean(gdc_cases.diagnoses.age_at_diagnosis_1_1, na.rm = TRUE)/365) %>%
+  dplyr::mutate(sex = rep("male", 3))
+
+mu_age_F = metadata %>%
+  dplyr::filter(gdc_cases.demographic.gender_1_1 == "female") %>%
+  dplyr::group_by(gdc_cases.project.project_id_1_1) %>%
+  dplyr::summarize(Mean = mean(gdc_cases.diagnoses.age_at_diagnosis_1_1, na.rm = TRUE)/365) %>%
+  dplyr::mutate(sex = rep("female", 3))
+
+mu_age = rbind(mu_age_M, mu_age_F)
+
+
+p_age = ggplot(metadata, aes(x = gdc_cases.diagnoses.age_at_diagnosis_1_1/365,
+                             group = gdc_cases.demographic.gender_1_1)) +
+  geom_histogram(aes(color = gdc_cases.demographic.gender_1_1,
+                     fill = gdc_cases.demographic.gender_1_1),
+                 position = "identity",
+                 binwidth = 2,
+                 alpha = 0.25) +
+  geom_vline(data = mu_age,
+             aes(xintercept = Mean, color = sex),
+             linetype = "dashed") +
+  scale_color_manual(values = c("lightpink1", "cyan3")) +
+  scale_fill_manual(values = c("lightpink1", "cyan3")) +
+  facet_wrap(~ gdc_cases.project.project_id_1_1,
+             strip.position = "right",
+             nrow = 3) +
+  labs(x = "Age") +
+  theme(title = element_blank(),
+        axis.text = element_text(size = 16),
+        axis.title.x = element_text(size = 18),
+        axis.title.y = element_blank(),
+        legend.position = "none",
+        panel.background = element_rect(colour = "black", fill = NA),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())
+
+## combine plots
+cowplot::plot_grid(
+  bar_age, bar_race, p_age, 
+  nrow = 3,
+  rel_heights = c(1, 1, 3),
+  labels = NULL
+)
+
+```
+
+
+We can immediatly see that the sampling biase towards patients with white background observed in all the cancer cohorts in @sec-All-cancers-cohort-demographic is reflected as well in kidney cancer cohorts. In terms of geneder demographics, males represents from 60% (KICH) to 74% (KIRP) of the cohorts. The histograms split by cancer types, however, show that the age distributions between the sexs int he different kidney cancer types are similar.
+
+Since we may loose too many samples if we would generate balanced cohorts in terms of sex and race, we can keep the samples as is, and take Age, Sex and Race in account during the modeling phases downstream.
+
+
+
+## Contingency tables
+
+As we saw previously TCGA provides rich clinical metadata for each patient. We can run some simple demographic statistics (chi-squared and Fisher exact tests) to see if any clinical covariate is significantly overrepresented in any of the three cancer types.
+
+
+
+```{r, echo=FALSE, warning=FALSE}
+
+# prep summary statistics 
+metadata_summary = data.frame(
+  "covariate" = "",
+  "covariate_val" = "",
+  "KICH" = "",
+  "KIRC" = "",
+  "KIRP" = ""
+)
+
+for(column in c(
+  "gdc_cases.demographic.gender_1_1",
+  "cgc_follow_up_tumor_status_1_1",
+  "cgc_case_pathologic_stage_1_1",
+  "cgc_case_pathologic_t_1_1",
+  "histological_grade",
+  "cgc_case_pathologic_n_1_1",
+  "vital_status"
+)){
+  
+  tmp_table = metadata %>%
+    dplyr::select(c("gdc_cases.project.project_id_1_1", column)) %>%
+    table() %>%
+    t() %>%
+    data.frame() %>%
+    tidyr::pivot_wider(names_from = gdc_cases.project.project_id_1_1, values_from = Freq)
+  
+  tmp_table$covariate = column
+  colnames(tmp_table) = c("covariate_val", "KICH", "KIRC", "KIRP", "covariate")
+  
+  metadata_summary = rbind(metadata_summary, tmp_table)
+
+}
+
+metadata_summary = metadata_summary %>%
+  dplyr::relocate(c(
+    "covariate",
+    "covariate_val",
+    "KICH",
+    "KIRC",
+    "KIRP"
+  ))
+
+```
+
+
+We can test if there is a significant difference of each observed clinical covariate across the three kidney cancer types. The null hypothesis here is that the distribution of each covariate in the the three cancer subtypes is the same.
+
+
+
+### Sex
+
+There are 596 males and 291 females in the three kidney cancer cohorts after filtering. Despite the imbalance, the difference across cancer types is not significant.
+
+
+```{r}
+#| echo: FALSE
+#| warning: FALSE
+
+# prep table
+sex_table = metadata_summary %>%
+  dplyr::filter(covariate == "gdc_cases.demographic.gender_1_1") 
+rownames(sex_table) = sex_table$covariate_val
+sex_table = sex_table %>%
+  dplyr::select(-c("covariate", "covariate_val")) %>%
+  as.matrix() %>%
+  t()
+class(sex_table) = "numeric"
+
+# print metadata table
+DT::datatable(
+  sex_table,
+  extensions = c("FixedColumns", "FixedHeader"),
+  caption = "Sex", 
+  options = list(
+    scrollX = TRUE, paging = TRUE, fixedHeader = FALSE, pageLength = 10
+  )
+)
+
+```
+
+
+
+
+```{r}
+#| echo: FALSE
+#| message: FALSE
+#| warning: FALSE
+#| fig.height: 6
+#| fig.cap: "Figure 3: Contigency table, Sex"
+
+# plot
+vcd::mosaic(sex_table,
+            shade = TRUE,
+            split_vertical = TRUE,
+            main = "Table 1: Contigency table, Sex")
+
+```
+
+
+### Disease status
+
+
+After filtering, the three kidney cancer types contains 563 subject that are now tumor free, and 190 subject that still have tumor.
+It seems that KIRP have significantly more patients that are now tumor free, while there are still significantly more patients with tumor for KIRC.
+The small sample size of KICH patients may skew these results, so this outcome should be interpreted with a pinch of salt.
+
+
+```{r}
+#| echo: FALSE
+#| warning: FALSE
+
+# prep table
+tumor_table = metadata_summary %>%
+  dplyr::filter(covariate == "cgc_follow_up_tumor_status_1_1") 
+rownames(tumor_table) = tumor_table$covariate_val
+tumor_table = tumor_table %>%
+  dplyr::select(-c("covariate", "covariate_val")) %>%
+  as.matrix() %>%
+  t()
+class(tumor_table) = "numeric"
+
+# print metadata table
+DT::datatable(
+  tumor_table,
+  extensions = c("FixedColumns", "FixedHeader"),
+  caption = "Table 2: Contigency table, Disease Status", 
+  options = list(
+    scrollX = TRUE, paging = TRUE, fixedHeader = FALSE, pageLength = 10
+  )
+)
+
+```
+
+
+```{r}
+#| echo: FALSE
+#| message: FALSE
+#| warning: FALSE
+#| fig.height: 6
+#| fig.cap: "Figure 4: Contigency table, Disease Status"
+
+# plot
+vcd::mosaic(tumor_table,
+            shade = TRUE,
+            split_vertical = TRUE,
+            main = "Disease Status")
+
+```
+
+
+
+### Tumor Stages
+
+The tumors across the patients were scored as: 458 Stage I, 105 Stage II, 189 Stage III and 105 Stage IV tumors.
+
+This staging system is less granular than the [TNM Staging System](https://www.cancer.gov/about-cancer/diagnosis-staging/staging) (that we look at into below), and it describe the tumro as follow:
+
+* Stage 0 = Abnormal cells are present but have not spread to nearby tissue. Also called carcinoma in situ, or CIS. CIS is not cancer, but it may become cancer.
+* Stage I, Stage II, and Stage III = Cancer is present. The higher the number, the larger the cancer tumor and the more it has spread into nearby tissues.
+* Stage IV = The cancer has spread to distant parts of the body.
+
+The higher the number, the more advanced the cancer is.
+
+
+KIRC patients seem to have a higher number of Stage IV cancer, while KIRP patients have more STage I cancers. This can either be bias in the sampling of the cohort, or it could really indicate that KIRC cancer is more aggressive and fast progressing than KIRP.
+
+
+```{r}
+#| echo: FALSE
+#| warning: FALSE
+
+# prep table
+stage_table = metadata_summary %>%
+  dplyr::filter(covariate == "cgc_case_pathologic_stage_1_1") 
+rownames(stage_table) = stage_table$covariate_val
+stage_table = stage_table %>%
+  dplyr::select(-c("covariate", "covariate_val")) %>%
+  as.matrix() %>%
+  t()
+class(stage_table) = "numeric"
+
+# print metadata table
+DT::datatable(
+  stage_table,
+  extensions = c("FixedColumns", "FixedHeader"),
+  caption = "Table 3: Contigency table, Tumor Stage", 
+  options = list(
+    scrollX = TRUE, paging = TRUE, fixedHeader = FALSE, pageLength = 10
+  )
+)
+
+```
+
+
+
+```{r}
+#| echo: FALSE
+#| message: FALSE
+#| warning: FALSE
+#| fig.height: 6
+#| fig.cap: "Figure 5: Contigency table, Tumor Stage"
+
+# plot
+vcd::mosaic(stage_table,
+            shade = TRUE,
+            split_vertical = TRUE,
+            main = "Tumor Stage")
+
+```
+
+
+### Tumor Histology
+
+Histological evaluation of the tumor cells essential to allow for accurate prognostication and tailored therapy, both surgical and adjuvant.
+
+Histological grade have five categories:
+
+* G1 = Well differentiated
+* G2 = Moderately differentiated
+* G3 = Poorly differentiated, Undifferentiated, Anaplastic
+* G4 = Undifferentiated (high grade)
+* GX = Grade cannot be assessed
+
+Unfortunately, within the TCGA kidney cohorts, only KIRC biopsys where graded histologically. No histological grading was available for KICH and KIRP tumors.
+
+For the KIRC tumors, 14 biopsys had G1 grade, 229 G2 grade, 204 had G3 grade, 76 G4 and 5 biopsys could not be graded (GX).
+
+
+
+```{r}
+#| echo: FALSE
+#| warning: FALSE
+
+# prep table
+histology_table = metadata_summary %>%
+  dplyr::filter(covariate == "histological_grade") 
+rownames(histology_table) = histology_table$covariate_val
+histology_table = histology_table %>%
+  dplyr::select(-c("covariate", "covariate_val"))
+
+# print metadata table
+DT::datatable(
+  histology_table,
+  extensions = c("FixedColumns", "FixedHeader"),
+  caption = "Table 4: Contigency table, Tumor Histology", 
+  options = list(
+    scrollX = TRUE, paging = TRUE, fixedHeader = FALSE, pageLength = 10
+  )
+)
+
+```
+
+
+
+```{r}
+#| echo: FALSE
+#| message: FALSE
+#| warning: FALSE
+#| fig.height: 6
+#| fig.cap: "Figure 6: Contigency table, Tumor Histology"
+
+histology_table = histology_table %>%
+  dplyr::slice(-1) %>%
+  as.matrix()  %>%
+  t()
+class(histology_table) = "numeric"
+
+# plot
+vcd::mosaic(histology_table,
+            shade = TRUE,
+            split_vertical = TRUE,
+            main = "Tumor Histology")
+
+```
+
+
+### TMN, T: Main Tumor Pathology
+      
+Let's look now into the TMN staging system. We have multiple staging and substaging that describes the tumor presence, dimension and invasion of adjacent tissues:
+
+* TX = Primary tumor cannot be assessed.
+* T0 = No evidence of primary tumor.
+* T1 = Tumor ≤2 cm in greatest dimension.
+* T2 = Tumor >2 cm but ≤4 cm.
+* T3 = Tumor >4 cm or with subserosal invasion or involvement of the mesoappendix.
+* T4 = Tumor perforates the peritoneum or directly invades other adjacent organs or structures (excluding direct mural extension to adjacent subserosa of adjacent bowel), e.g., abdominal wall and skeletal muscle.
+
+
+The presence of 12 distinct substaging for TMN, and the relative small sample size across the cohort makes the outcome of this comparison difficult to judge. We could claim that KIRP seems to be enriched in lower tumor stages (T1a) and depleted in higher tumor stages (T2, T3a, T3b) than KIRC.
+
+
+```{r}
+#| echo: FALSE
+#| warning: FALSE
+
+# prep table
+TMN_T_table = metadata_summary %>%
+  dplyr::filter(covariate == "cgc_case_pathologic_t_1_1") 
+rownames(TMN_T_table) = TMN_T_table$covariate_val
+TMN_T_table = TMN_T_table %>%
+  dplyr::select(-c("covariate", "covariate_val")) %>%
+  as.matrix() %>%
+  t()
+class(TMN_T_table) = "numeric"
+
+# print metadata table
+DT::datatable(
+  TMN_T_table,
+  extensions = c("FixedColumns", "FixedHeader"),
+  caption = "Table 5: Contigency table, TMN Main Tumor", 
+  options = list(
+    scrollX = TRUE, paging = TRUE, fixedHeader = FALSE, pageLength = 10
+  )
+)
+
+```
+
+
+
+```{r}
+#| echo: FALSE
+#| message: FALSE
+#| warning: FALSE
+#| fig.height: 6
+#| fig.cap: "Figure 7: Contigency table, TMN Main Tumor"
+
+# plot
+vcd::mosaic(TMN_T_table,
+            shade = TRUE,
+            split_vertical = TRUE,
+            main = "TMN Main Tumor")
+
+```
+
+   
+### TMN, N: Lymph Nodes metastatis
+
+The TMN tumor staging system provides as well a score for the lymph nodes:
+
+* NX = Regional lymph nodes cannot be assessed.
+* N0 = No regional lymph node metastasis.
+* N1 = Regional lymph node metastasis <12 nodes.
+* N2 = Large mesenteric masses (>2 cm) and/or extensive nodal deposits (≥12), especially those that encase the superior mesenteric vessels.
+
+In the kidney cohort, lymph nodes of 506 patiens could not be scored (NX), 328 patients had a N0 score, 43 N1 and 7 had a N2 score.
+Lymph nodes of most patients with KIRP tumors could not be scored, they they were depleted in No and enriched in N1 if compared with patients with KIRC tumor.
+
+
+
+```{r}
+#| echo: FALSE
+#| warning: FALSE
+
+# prep table
+TMN_N_table = metadata_summary %>%
+  dplyr::filter(covariate == "cgc_case_pathologic_n_1_1") 
+rownames(TMN_N_table) = TMN_N_table$covariate_val
+TMN_N_table = TMN_N_table %>%
+  dplyr::select(-c("covariate", "covariate_val")) %>%
+  as.matrix() %>%
+  t()
+class(TMN_N_table) = "numeric"
+
+# print metadata table
+DT::datatable(
+  TMN_N_table,
+  extensions = c("FixedColumns", "FixedHeader"),
+  caption = "Table 6: Contigency table, TMN Lymph nodes", 
+  options = list(
+    scrollX = TRUE, paging = TRUE, fixedHeader = FALSE, pageLength = 10
+  )
+)
+
+```
+
+
+
+```{r}
+#| echo: FALSE
+#| message: FALSE
+#| warning: FALSE
+#| fig.height: 6
+#| fig.cap: "Figure 8: Contigency table, TMN Lymph nodes"
+
+# plot
+vcd::mosaic(TMN_N_table,
+            shade = TRUE,
+            split_vertical = TRUE,
+            main = "TMN Lymph nodes")
+
+```
+
+
+
+### Prognosis Outcome {#sec-dataset-exploration}
+
+Of the 887 petients with kidney tumor, 659 were alive at the time of the last check up, while 228 died. It appears that KIRC patients (48.7% dead) have worse prognosis than KIRP patients (17.9% dead), as observed in the previous comparisons. However, before drawing a formal conclusion, we should validate this observation at least in another independent cohort.
+
+
+```{r}
+#| echo: FALSE
+#| warning: FALSE
+
+# prep table
+vital_status_table = metadata_summary %>%
+  dplyr::filter(covariate == "vital_status") 
+rownames(vital_status_table) = vital_status_table$covariate_val
+vital_status_table = vital_status_table %>%
+  dplyr::select(-c("covariate", "covariate_val")) %>%
+  as.matrix() %>%
+  t()
+class(vital_status_table) = "numeric"
+
+# print metadata table
+DT::datatable(
+  vital_status_table,
+  extensions = c("FixedColumns", "FixedHeader"),
+  caption = "Table 7: Contigency table, Prognosis Outcome", 
+  options = list(
+    scrollX = TRUE, paging = TRUE, fixedHeader = FALSE, pageLength = 10
+  )
+)
+
+```
+
+
+
+```{r}
+#| echo: FALSE
+#| message: FALSE
+#| warning: FALSE
+#| fig.height: 6
+#| fig.cap: "Figure 9: Contigency table, Vital Status"
+
+# plot
+vcd::mosaic(vital_status_table,
+            shade = TRUE,
+            split_vertical = TRUE,
+            main = "Prognosis Outcome")
+
+```
+
+
+
+
+```{r, echo=FALSE, warning=FALSE}
+
+# export metadata table
+write.table(metadata,
+  file = "./data/TCGA_PanCan_metadata.kidney.tsv",
+  quote = FALSE, sep = "\t", col.names = TRUE, row.names = TRUE
+)
+
+# export counts table
+write.table(raw_counts,
+  file = "./data/TCGA_PanCan_data.RNAseq.kidney.tsv",
+  quote = FALSE, sep = "\t", col.names = TRUE, row.names = TRUE
+)
+
+```
+
+
+
+## Lessons Learnt {#sec-lesson-learnt-dataset-exploration}
+
+So far, we have learnt:
+
+* A UMAP is a handy way to summarize relationship between data:
+  + Projecting the transcriptomics data from kidney cancer biopsies with a UMAP showed that samples are grouped in three clusters, loosely corresponding to the three kidney cancer types (KICH, KIRC, KIRP).
+  + Some samples seem to be misclassified and clustered in the wrong cancer type group, or there are additional nuances that were not classified with bulk RNA-seq.
+* Contingency tables reports on large clinical trends between the three cancer types:
+  + KIRC patients seems to have a higher chance to be tumor free than KIRP patients.
+  + Despite that, KIRC patients seems to be enriched for Stage IV tumors and depleted in Stage I tumors when compared to KIRP patients.
+  + Likewise, KIRP patients have more T1a tumor stages and less T2, T3a and T3b tumours when compared to KIRC.
+  + Unfortunately, KIRC patients seems to had a worse outcome than KIRP patients.
+* The clinical outcome for KIRC patients seems to be more polarized: or the patient were cancer free at the end of the study, or the patient had more advanced tumour or a worse outcome when compared to KIRP patients. This overview suggest the possibility that if we could develop biomarkers for early detection of KIRC cancers we could improve the clinical outcome for these patients.
+
+
+  
+
+
+
+

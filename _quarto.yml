@@ -1,0 +1,72 @@
+project:
+    type: book
+    output-dir: ./deploy/
+    
+
+book:
+    title: "Comparative analysis of Ulva Organellar Genomes and Development of markers for Species identification"
+    author: "Del Cortona Andrea, Tran T. Lan-Anh, Leliaert Frederik, De Clerck Olivier"
+    version: 1.0.0
+    date: "2025/02/10"
+    #sharing: linkedin
+    #cover-image:
+
+    navbar:
+        search: true
+        background: LightSlateGray
+
+    page-footer:
+        border: true
+        background: Gainsboro
+        center:
+            - text: "This page is built with ❤️ and *Quarto*."
+              href: https://quarto.org/
+              aria-label: Quarto
+        left:
+            - text: "Copyright © 2025 Andrea Del Cortona." 
+        right:
+            - icon: github
+              href: https://github.com/19ADC99
+              aria-label: GitHub
+            - icon: linkedin
+              href: https://www.linkedin.com/in/andrea-del-cortona-86a75474/
+              aria-label: Lindekin
+
+    chapters:
+      - index.qmd
+      - cp-and-mt-phylogeny.qmd
+      - marker-selection.qmd
+
+format:
+    html:
+        theme: cosmo
+        fig-width: 10
+        #cap-location: margin
+        number-sections: true
+        number-depth: 5
+        toc: true
+        toc-depth: 4
+        #toc-expand: true
+        grid:
+            body-width: 1000px
+        include-in-header:
+            text: |
+                <style>
+                #quarto-sidebar .sidebar-item-text {
+                  font-weight: bold;
+                }
+                #quarto-sidebar .chapter-number {
+                  font-weight: normal
+                }
+                #quarto-sidebar .chapter-title {
+                  font-weight: normal
+                }
+                #.nav-tabs .nav-link.active {
+                  background-color: rgba(239, 236, 255, 0.5);
+                }
+                </style>
+
+execute:
+  freeze: auto
+  
+  

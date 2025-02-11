@@ -1,0 +1,209 @@
+# Gather Datasets and QC
+
+```{r, echo=FALSE, include=FALSE}
+# load required libraries
+up_packages = c("ape", "circlize", "ComplexHeatmap", "corrplot", "DECIPHER", "dendextend", "doSNOW", "foreach",
+                "ggdist", "ggplot2", "ggtree", "gridExtra", "phangorn", "phylogram", "phytools", "reshape",
+                "RColorBrewer", "scales", "stringr", "TreeDist", "treeio")
+lapply(up_packages, require, character.only = TRUE)
+
+# set working directory
+mainDir = "/home/andrea/19ADC99/UlvaOmics"
+knitr::opts_knit$set(root.dir = mainDir)
+
+# source custom functions
+source("src/utils.R")
+```
+
+
+## On this page
+
+Biological insights and take-home messages are at the bottom of the page at Lesson Learnt: @sec-lesson-learnt-gather-datasets-and-QC.
+
+* Here we explore the data availability of The Cancer Genome Atlas public resource.
+* We explore the available clinical metadata for each cancer patient.
+* We explore the cohort demographic information.
+
+
+
+
+
+
+
+```{bash, echo=FALSE, include=FALSE, eval=FALSE}
+
+# download RNAseq data
+wget https://tcga-pancan-atlas-hub.s3.us-east-1.amazonaws.com/download/EB%2B%2BAdjustPANCAN_IlluminaHiSeq_RNASeqV2.geneExp.xena.gz
+
+# decompress
+gzip -d E++BAdjustPANCAN_IlluminaHiSeq_RNASeqV2.geneExp.xena.gz
+
+# rename
+mv EB++AdjustPANCAN_IlluminaHiSeq_RNASeqV2.geneExp.xena TCGA_PanCan_data.RNAseq.tsv
+
+```
+
+
+```{r}
+#| echo: FALSE
+#| message: FALSE
+#| warning: FALSE
+#| fig.height: 9
+#| fig.cap: "Figure 4: UMAP RNAseq"
+
+
+if(file.exists("./data/TCGA_PanCan_data.RNAseq.UMAP.tsv")){
+  
+  umap_df = read.delim("./data/TCGA_PanCan_data.RNAseq.UMAP.tsv", header = TRUE, sep = "\t")
+  
+} else {
+  
+  # import table
+  raw_counts = BiocGenerics::as.data.frame(data.table::fread("./data/TCGA_PanCan_data.RNAseq.tsv", header = TRUE, sep = "\t"))
+  
+  # average counts from genes with the same name
+  raw_counts = rowmean(raw_counts[, c(2:ncol(raw_counts))], group = raw_counts$sample)
+  
+  ### WARNING!
+  # These names are duplicated:
+  # * "TCGA-21-1076-01" at locations 3745 and 3746.
+  # * "TCGA-DD-AACA-02" at locations 5181 and 5182.
+  # * "TCGA-06-0156-01" at locations 6702 and 6703.
+  # * "TCGA-06-0211-01" at locations 6716 and 6717.
+  # * "TCGA-DU-6404-02" at locations 7622 and 7623.
+  raw_counts = raw_counts[, -c(1, 3746, 5182, 6703, 6717, 7623)]
+  raw_counts[is.na(raw_counts)] = 1E-33
+  raw_counts = 2^raw_counts
+    
+  # select Primary Tumor (discard metastasis and healthy tissues)
+  metadata = metadata %>%
+    dplyr::filter(gdc_cases.samples.sample_type_1_1 == "Primary Tumor") %>%
+    dplyr::filter(!is.na(sample)) %>%
+    dplyr::filter(sample %in% colnames(raw_counts))
+
+  # sync samples in gene counts and metadata  
+  raw_counts = raw_counts %>% dplyr::select(dplyr::any_of(metadata$sample))
+  raw_counts = raw_counts[, match(metadata$sample, colnames(raw_counts))]
+  
+  # synch samples in gene counts and metadata
+  keep_samples = BiocGenerics::intersect(colnames(raw_counts), metadata$sample)
+  metadata_fltr = metadata %>% dplyr::filter(sample %in% keep_samples)
+  raw_counts = raw_counts %>% dplyr::select(dplyr::any_of(keep_samples))
+  # match data and metadata
+  raw_counts = raw_counts[, match(metadata_fltr$sample, colnames(raw_counts))]   
+  
+  # filter lowly expressed genes
+  geneCounts_DGE = edgeR::DGEList(raw_counts)
+  geneCounts_DGE$samples$group = metadata_fltr[, "gdc_cases.project.project_id_1_1"]
+  
+  ### CPM normalization
+  geneCounts_DGE = edgeR::calcNormFactors(geneCounts_DGE, method = "TMM")
+  geneCounts_norm = edgeR::cpm(geneCounts_DGE)
+  geneCounts_normLog = edgeR::cpm(geneCounts_DGE, log = TRUE)
+  
+  ## Filter lowly expressed genes
+  keep.exprs = edgeR::filterByExpr(geneCounts_DGE, group = geneCounts_DGE$samples$group)
+  geneCounts_DGE = geneCounts_DGE[keep.exprs, , keep.lib.sizes = FALSE]
+  
+  # select top 1000 most variable genes
+  top_var_genes_1k = geneCounts_DGE$counts %>%
+    matrixStats::rowVars() %>%
+    sort(decreasing = TRUE) %>%
+    head(1000) %>% 
+    names()
+  
+  most_variable_1k = geneCounts_DGE$counts %>%
+    as.data.frame() %>%
+    dplyr::filter(row.names(geneCounts_DGE$counts) %in% top_var_genes_1k)
+  
+  # fit UMAP
+  umap_fit = umap::umap(t(most_variable_1k))
+  colnames(umap_fit$layout) = c("UMAP1", "UMAP2")
+  umap_df = umap_fit$layout %>% as.data.frame()
+  # add metadata
+  umap_df$cancer_type = metadata_fltr$gdc_cases.project.project_id_1_1
+  umap_df$race = metadata_fltr$gdc_cases.demographic.race_1_1
+  umap_df$sex = metadata_fltr$gdc_cases.demographic.gender_1_1
+  
+  # export
+  write.table(umap_df,
+    file = "./data/TCGA_PanCan_data.RNAseq.UMAP.tsv",
+    quote = FALSE, sep = "\t", col.names = TRUE, row.names = TRUE
+  )
+  
+}
+
+
+# plot
+custom_palette = rev(grDevices::colorRampPalette(RColorBrewer::brewer.pal(7, "RdPu"))(length(unique(umap_df$cancer_type))))
+
+ggplot(umap_df, aes(x = UMAP1, y = UMAP2)) +
+       geom_point(aes(color = cancer_type, fill = cancer_type),
+                  size = 1, alpha = 0.5) +
+       stat_ellipse(data = subset(umap_df, cancer_type %in% c("TCGA-KICH", "TCGA-KIRC", "TCGA-KIRP")),
+                    aes(group = cancer_type, color = cancer_type), type = "euclid", linetype = 2) +
+       #geom_text(aes(label = ifelse(cancer_type %in% c("TCGA-KIRP"), as.character(cancer_type), "")), hjust = 0, vjust = 0) +
+       guides(color = guide_legend(override.aes = list(size = 4)),
+              fill = "none") +
+       #scale_color_manual(values = custom_palette) +  # Apply custom color palette
+       #scale_fill_manual(values = custom_palette) +   # Apply custom color palette to fill as well
+       labs(x = "UMAP1",
+            y = "UMAP2",
+            fill = "cancer type") +
+       theme(plot.title = element_blank(),
+             legend.position = "bottom", 
+             legend.background = element_rect(colour = "grey25", size = 0.5),
+             panel.background = element_rect(fill = NA, colour = "black"),
+             panel.grid.major = element_line(colour = "grey90"),
+             panel.grid.minor = element_line(colour = "grey90"))
+      
+
+```
+
+
+
+
+
+
+### Prognosis Outcome {#sec-dataset-exploration}
+
+Of the 887 petients with kidney tumor, 659 were alive at the time of the last check up, while 228 died. It appears that KIRC patients (48.7% dead) have worse prognosis than KIRP patients (17.9% dead), as observed in the previous comparisons. However, before drawing a formal conclusion, we should validate this observation at least in another independent cohort.
+
+
+```{r}
+#| echo: FALSE
+#| warning: FALSE
+
+# prep table
+vital_status_table = metadata_summary %>%
+  dplyr::filter(covariate == "vital_status") 
+rownames(vital_status_table) = vital_status_table$covariate_val
+vital_status_table = vital_status_table %>%
+  dplyr::select(-c("covariate", "covariate_val")) %>%
+  as.matrix() %>%
+  t()
+class(vital_status_table) = "numeric"
+
+# print metadata table
+DT::datatable(
+  vital_status_table,
+  extensions = c("FixedColumns", "FixedHeader"),
+  caption = "Table 7: Contigency table, Prognosis Outcome", 
+  options = list(
+    scrollX = TRUE, paging = TRUE, fixedHeader = FALSE, pageLength = 10
+  )
+)
+
+```
+
+
+
+
+
+## Lessons Learnt {#sec-lesson-learnt-gather-datasets-and-QC}
+
+So far, we have learnt:
+
+* TCGA is a public resource with a wide collection of samples from cancer biopsies from patients affected by 32 different cancer types.
+* TCGA provides abundant molecular and clinical information for both biopsies and patients and it allows for patient stratification and therapeutic target discovery.
+* Cancers with kidneys as primary sites are the third most abundant samples available in TCGA (n = 1,030 samples), after breast (n = 1,246) and lung biopsies (n = 1,156), and provides an excellent yet challenging case-study.

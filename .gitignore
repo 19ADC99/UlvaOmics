@@ -1,0 +1,14 @@
+# files
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+
+# folders
+./.quarto/
+./.Rproj.user/
+./_freeze/
+./data/
+./omnipathr-log/
+
+/.quarto/
