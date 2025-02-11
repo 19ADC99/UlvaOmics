@@ -1,4 +1,4 @@
-# Gather Datasets and QC
+# Species tree reconstruction from organellar genomes
 
 ```{r, echo=FALSE, include=FALSE}
 # load required libraries
@@ -18,7 +18,7 @@ source("src/utils.R")
 
 ## On this page
 
-Biological insights and take-home messages are at the bottom of the page at Lesson Learnt: @sec-lesson-learnt-gather-datasets-and-QC.
+Biological insights and take-home messages are at the bottom of the page at Lesson Learnt: @sec-lesson-learnt-cp-and-mt-phylogeny.
 
 * Here we explore the data availability of The Cancer Genome Atlas public resource.
 * We explore the available clinical metadata for each cancer patient.
@@ -33,13 +33,248 @@ Biological insights and take-home messages are at the bottom of the page at Less
 ```{bash, echo=FALSE, include=FALSE, eval=FALSE}
 
 # download RNAseq data
-wget https://tcga-pancan-atlas-hub.s3.us-east-1.amazonaws.com/download/EB%2B%2BAdjustPANCAN_IlluminaHiSeq_RNASeqV2.geneExp.xena.gz
+1. To grep only cds in gff file
+awk '$3 == "CDS" {print $0}' KP720617.gff > KP720617_cdsonly.gff
+or grep and pipe the command
+grep "CDS" NC_053255.gff | bedtools getfasta -fi NC_053255.fasta -bed NC_053255.gff -fo results
 
-# decompress
-gzip -d E++BAdjustPANCAN_IlluminaHiSeq_RNASeqV2.geneExp.xena.gz
+2. Loop to do this to all the files in the folder
 
-# rename
-mv EB++AdjustPANCAN_IlluminaHiSeq_RNASeqV2.geneExp.xena TCGA_PanCan_data.RNAseq.tsv
+#why $basename() here?
+for file in *.fasta; do 
+	echo $file
+	BASENAME="${file%.*}"
+	grep "CDS" $BASENAME.gff | wc -l
+	grep "CDS" $BASENAME.gff > $BASENAME.cds.gff
+	bedtools getfasta -fi $file -bed $BASENAME.cds.gff -fo $BASENAME.cds.fasta; done
+
+
+#get sequence length > 200
+awk 'BEGIN{FS="[> ]"} /^>/{val=$2;next}  {print val,length($0)}'   Input_file
+out put:
+seq1 6
+seq2 7
+seq3 4
+
+awk 'BEGIN{FS="[> ]"} /^>/{val=$2;next}  {if (length($0) >200) {print val, length($0), "\n", $0}}' LC507117.cds.fasta
+
+
+
+######## MT GENOMES
+# select mt genes
+cut -f 9 *.gff | sed "s/Name=//g" | sed "s/ .*//g" |  sed "s/ATP/atp/g" | sed "s/NAD/nad/"  | grep "atp\|cob\|cox\|nad\|rpl\|rps" | sort -u > gene_list.lst
+
+# replace ATP with atp and NAD with nad
+for file in ./*; do  sed -i "s/ATP/atp/g" $file; sed -i "s/NAD/nad/" $file; done
+
+# get the gene-wise fasta sequences
+while read GENE; do
+	for file in *[0-9].fasta; do
+		grep $GENE $(basename $file .fasta).cds.gff > tmp.gff;
+		bedtools getfasta -fi $file -bed tmp.gff | tr ":" " ";
+	done > mt.$GENE.nt.fa;
+	rm tmp.gff;
+done < gene_list.lst
+	
+
+
+Feature (KU182748:61700-62486) beyond the length of KU182748 size (62022 bp).  Skipping.
+
+
+for file in mt.*.nt.fa; do ../faTrans $file $(basename $file .nt.fa).aa.fa; done
+
+grep "*" *.aa.fa
+
+add cox3 pr sequence KU182748
+nad5 >NC_053255
+
+
+######## CP GENOMES
+# select cp genes
+cut -f 9 *.gff | sed "s/Name=//g" | sed "s/ .*//g" | grep "accD\|atp\|ccsA\|cemA\|chlI\|clpP\|ftsH\|infA\|pafI\|pbf1\|pet\|psa\|psb30\|psb\|rbcL\|rnl\|rns\|rpl\|rpo\|rps\|rrn5\|tufA\|ycf" | sort -u > gene_list.lst
+
+# get the gene-wise fasta sequences
+while read GENE; do
+	for file in *[0-9].fasta; do
+		grep $GENE $(basename $file .fasta).cds.gff > tmp.gff;
+		bedtools getfasta -fi $file -bed tmp.gff | tr ":" " ";
+	done > cp.$GENE.nt.fa;
+	rm tmp.gff;
+done < gene_list.lst
+
+
+
+# get the gene-wise fasta sequences
+while read GENE; do for file in *[0-9].fasta; do grep $GENE $(basename $file .fasta).cds.gff > tmp.gff; bedtools getfasta -fi $file -bed tmp.gff | tr ":" " "; done > cp.$GENE.fa; rm tmp.gff; done < gene_list.lst
+
+		
+		
+for file in cp.*.nt.fa; do ../faTrans $file $(basename $file .nt.fa).aa.fa; done		
+		
+grep "*" *.aa.fa
+
+
+
+
+
+
+
+
+
+
+### PHYLOGENY
+###
+###
+
+# rename sequences
+for file in *.fasta; do mv "$(Bates et al)" $(echo $file | sed 's/ alignment.*//g').fa; done
+
+
+# gene wise Maximum Likelihood phylogeny - CP
+for file in ../cp_clean_align/*.fa; do
+  ~/bin/iqtree-2.2.0-Linux/bin/iqtree2 -s $file \
+    -st DNA \
+    -pre $(basename $file .fa) \
+    -nt 8 \
+    -wbt -bb 1000 -alrt 1000 \
+    -m MFP+MERGE’;
+done
+
+# gene wise Maximum Likelihood phylogeny - MT
+ls ../mt_clean_align/*.fa \
+  | grep -v Mt \
+  | xargs -P 16 -n 6 -I {} bash -c \
+  ‘/mnt/wgs-runs/REFERENCE/bin/iqtree-2.2.0-Linux/bin/iqtree2 -s {} \
+    -st DNA \
+    -pre $(basename {} .fa) 
+    -nt 6 \
+    -wbt -bb 1000 -alrt 1000 \
+    -m MFP+MERGE’
+
+
+
+
+### create nexus file with best models CP
+k=1
+START=0
+echo "#nexus" >> cp_concat_allgenes_ML/head_noscaffold.nex
+echo "begin sets;" >> cp_concat_allgenes_ML/head_noscaffold.nex
+echo -n "charpartition mine = " >> cp_concat_allgenes_ML/tail_noscaffold.nex
+for file in cp_clean_align/*.fa; do
+  LEN=$(awk '/^>/ {if (seqlen){print seqlen}; print ;seqlen=0;next; } \
+    { seqlen += length($0)}END{print seqlen}' \
+    $file | sed -n 2,2p)
+  echo "charset part$k = $(($START+1))-$(($START+$LEN));" \
+    >> cp_concat_allgenes_ML/head_noscaffold.nex
+  START=$(($START+$LEN))
+  MODEL=$(grep "Best-fit model" cp_gene_wise_ML/$(basename $file .fa).log \
+    | sed 's/Best-fit model: //g' | sed 's/ chosen according to BIC//g')
+  echo -n "$MODEL:part$k ," \
+    >> cp_concat_allgenes_ML/tail_noscaffold.nex
+  k=$((k+1))
+done
+echo ";" >> cp_concat_allgenes_ML/tail_noscaffold.nex
+echo "end;" >> cp_concat_allgenes_ML/tail_noscaffold.nex
+cat cp_concat_allgenes_ML/head_noscaffold.nex \
+  cp_concat_allgenes_ML/tail_noscaffold.nex \
+  > cp_concat_allgenes_ML/cp_allgenes_concat.nex
+rm cp_concat_allgenes_ML/head_noscaffold.nex cp_concat_allgenes_ML/tail_noscaffold.nex
+sed -i 's/ ,;/;/g' cp_concat_allgenes_ML/cp_concat_allgenes_ML/cp_allgenes_concat.nex
+
+#### run full ML phylogeny
+../bin/iqtree-2.2.0-Linux/bin/iqtree2 -s cp_allgenes_concat.fa \
+    -st DNA \
+    -pre cp_allgenes_concat \
+    -p  cp_allgenes_concat.nex \
+    --sampling GENESITE \
+    -nt 96 \
+    -wbt -bb 1000 -alrt 1000 
+
+
+
+
+k=1; START=0; echo "#nexus" >> mt_concat_allgenes_ML/head_noscaffold.nex; echo "begin sets;" >> mt_concat_allgenes_ML/head_noscaffold.nex; echo -n "charpartition mine = " >> mt_concat_allgenes_ML/tail_noscaffold.nex; for file in mt_clean_align/*.fa; do LEN=$(awk '/^>/ {if (seqlen){print seqlen}; print ;seqlen=0;next; } { seqlen += length($0)}END{print seqlen} ' $file | sed -n 2,2p); echo "charset part$k = $(($START+1))-$(($START+$LEN));" >> mt_concat_allgenes_ML/head_noscaffold.nex; START=$(($START+$LEN)); MODEL=$(grep "Best-fit model" mt_gene_wise_ML/$(basename $file .fa).log | sed 's/Best-fit model: //g' | sed 's/ chosen according to BIC//g'); echo -n "$MODEL:part$k ," >> mt_concat_allgenes_ML/tail_noscaffold.nex; k=$((k+1)); done
+echo ";" >> mt_concat_allgenes_ML/tail_noscaffold.nex
+echo "end;" >> mt_concat_allgenes_ML/tail_noscaffold.nex
+cat mt_concat_allgenes_ML/head_noscaffold.nex \
+  mt_concat_allgenes_ML/tail_noscaffold.nex \
+  > mt_concat_allgenes_ML/mt_allgenes_concat.nex
+rm mt_concat_allgenes_ML/head_noscaffold.nex mt_concat_allgenes_ML/tail_noscaffold.nex
+sed -i 's/ ,;/;/g' mt_concat_allgenes_ML/mt_allgenes_concat.nex
+
+
+../bin/iqtree-2.2.0-Linux/bin/iqtree2 -s mt_allgenes_concat.fa  -st DNA -pre mt_allgenes_concat  -p  mt_allgenes_concat.nex  --sampling GENESITE  -nt 96 -wbt -bb 1000 -alrt 1000 
+
+
+
+
+
+
+
+
+
+
+
+### ASTRAL TO BUILD COALESCENCE BASED SPECIES TREE
+### it takes single gene ML and the corresponding boot strap trees generate byt iqtree
+
+
+# prepare files
+cat cp_gene_wise_ML/*.contree > cp_coalescence/cp_allgenes_single.tre
+cat mt_gene_wise_ML/*.contree > mt_coalescence/mt_allgenes_single.tre
+cat cp_gene_wise_ML/*.contree mt_gene_wise_ML/*.contree > cp_mt_coalescence/cp_mt_allgenes_single.tre
+
+for file in cp_gene_wise_ML/*.ufboot; do echo $file | sed ‘s#^#/mnt/wgs-runs/REFERENCE/#’; done > cp_coalescence/cp_allgenes_single.BS
+for file in mt_gene_wise_ML/*.ufboot; do echo $file | sed ‘s#^#/mnt/wgs-runs/REFERENCE/#’; done > mt_coalescence/mt_allgenes_single.BS
+for file in cp_gene_wise_ML/*.ufboot mt_gene_wise_ML/*.ufboot; do echo $file | sed ‘s#^#/mnt/wgs-runs/REFERENCE/#’; done > cp_mt_coalescence/cp_mt_allgenes_single.BS
+
+
+
+java -Xmx24000M \
+-jar bin/Astral/astral.5.7.8.jar \
+--bootstraps cp_coalescence/cp_allgenes_single.BS \
+--gene-resampling \
+-r 100 \
+--input cp_coalescence/cp_allgenes_single.tre \
+--output cp_coalescence/cp_allgenes_single.astral.tre 2> \
+cp_coalescence/cp_allgenes_single.astral.log
+tail -n 1 cp_coalescence/cp_allgenes_single.astral.tre > \
+cp_coalescence/cp_allgenes_single.astral.contre
+
+java -Xmx24000M -jar bin/Astral/astral.5.7.8.jar --bootstraps cp_coalescence/cp_allgenes_single.BS --gene-resampling -r 100 --input cp_coalescence/cp_allgenes_single.tre --output cp_coalescence/cp_allgenes_single.astral.tre 2> cp_coalescence/cp_allgenes_single.astral.log
+
+tail -n 1 cp_coalescence/cp_allgenes_single.astral.tre > cp_coalescence/cp_allgenes_single.astral.contre
+
+
+
+
+java -Xmx24000M -jar bin/Astral/astral.5.7.8.jar --bootstraps mt_coalescence/mt_allgenes_single.BS --gene-resampling -r 100 --input mt_coalescence/mt_allgenes_single.tre --output mt_coalescence/mt_allgenes_single.astral.tre 2> mt_coalescence/mt_allgenes_single.astral.log
+
+tail -n 1 mt_coalescence/mt_allgenes_single.astral.tre > mt_coalescence/mt_allgenes_single.astral.contre
+
+
+
+java -Xmx24000M -jar bin/Astral/astral.5.7.8.jar --bootstraps cp_mt_coalescence/cp_mt_allgenes_single.BS --gene-resampling -r 100 --input cp_mt_coalescence/cp_mt_allgenes_single.tre --output cp_mt_coalescence/cp_mt_allgenes_single.astral.tre 2> cp_mt_coalescence/cp_mt_allgenes_single.astral.log
+
+tail -n 1 cp_mt_coalescence/cp_mt_allgenes_single.astral.tre > cp_mt_coalescence/cp_mt_allgenes_single.astral.contre
+
+
+
+
+
+merge cp with mt
+
+ bin/seqkit concat --full cp_concat_allgenes_ML/cp_allgenes_concat.fa mt_concat_allgenes_ML/mt_allgenes_concat.fa > cp_mt_concat_allgenes_ML/cp_mt_allgenes_concat.fa
+
+
+
+
+
+
+
+		python3.10 combinatorial_ML_phylogeny.py --infolder "ANALYSES_AND_RESULTS/
+09_combinatorial_phylogeny/00_cp_genes/,ANALYSES_AND_RESULTS/09_combinatorial_phylogeny/00_mt_genes/" --names "CP,MT" --iqtree /home/Andrea/Desktop/ANALYSES_AND_RESULTS/bin/iqtree-2.2.0-Linux/bin/iqtree2 --n_genes 10 --outdir /home/Andrea/Desktop/CP_MT/ANALYSES_AND_RESULTS/09_combinatorial_phylogeny/
+
 
 ```
 
@@ -52,110 +287,7 @@ mv EB++AdjustPANCAN_IlluminaHiSeq_RNASeqV2.geneExp.xena TCGA_PanCan_data.RNAseq.
 #| fig.cap: "Figure 4: UMAP RNAseq"
 
 
-if(file.exists("./data/TCGA_PanCan_data.RNAseq.UMAP.tsv")){
-  
-  umap_df = read.delim("./data/TCGA_PanCan_data.RNAseq.UMAP.tsv", header = TRUE, sep = "\t")
-  
-} else {
-  
-  # import table
-  raw_counts = BiocGenerics::as.data.frame(data.table::fread("./data/TCGA_PanCan_data.RNAseq.tsv", header = TRUE, sep = "\t"))
-  
-  # average counts from genes with the same name
-  raw_counts = rowmean(raw_counts[, c(2:ncol(raw_counts))], group = raw_counts$sample)
-  
-  ### WARNING!
-  # These names are duplicated:
-  # * "TCGA-21-1076-01" at locations 3745 and 3746.
-  # * "TCGA-DD-AACA-02" at locations 5181 and 5182.
-  # * "TCGA-06-0156-01" at locations 6702 and 6703.
-  # * "TCGA-06-0211-01" at locations 6716 and 6717.
-  # * "TCGA-DU-6404-02" at locations 7622 and 7623.
-  raw_counts = raw_counts[, -c(1, 3746, 5182, 6703, 6717, 7623)]
-  raw_counts[is.na(raw_counts)] = 1E-33
-  raw_counts = 2^raw_counts
-    
-  # select Primary Tumor (discard metastasis and healthy tissues)
-  metadata = metadata %>%
-    dplyr::filter(gdc_cases.samples.sample_type_1_1 == "Primary Tumor") %>%
-    dplyr::filter(!is.na(sample)) %>%
-    dplyr::filter(sample %in% colnames(raw_counts))
 
-  # sync samples in gene counts and metadata  
-  raw_counts = raw_counts %>% dplyr::select(dplyr::any_of(metadata$sample))
-  raw_counts = raw_counts[, match(metadata$sample, colnames(raw_counts))]
-  
-  # synch samples in gene counts and metadata
-  keep_samples = BiocGenerics::intersect(colnames(raw_counts), metadata$sample)
-  metadata_fltr = metadata %>% dplyr::filter(sample %in% keep_samples)
-  raw_counts = raw_counts %>% dplyr::select(dplyr::any_of(keep_samples))
-  # match data and metadata
-  raw_counts = raw_counts[, match(metadata_fltr$sample, colnames(raw_counts))]   
-  
-  # filter lowly expressed genes
-  geneCounts_DGE = edgeR::DGEList(raw_counts)
-  geneCounts_DGE$samples$group = metadata_fltr[, "gdc_cases.project.project_id_1_1"]
-  
-  ### CPM normalization
-  geneCounts_DGE = edgeR::calcNormFactors(geneCounts_DGE, method = "TMM")
-  geneCounts_norm = edgeR::cpm(geneCounts_DGE)
-  geneCounts_normLog = edgeR::cpm(geneCounts_DGE, log = TRUE)
-  
-  ## Filter lowly expressed genes
-  keep.exprs = edgeR::filterByExpr(geneCounts_DGE, group = geneCounts_DGE$samples$group)
-  geneCounts_DGE = geneCounts_DGE[keep.exprs, , keep.lib.sizes = FALSE]
-  
-  # select top 1000 most variable genes
-  top_var_genes_1k = geneCounts_DGE$counts %>%
-    matrixStats::rowVars() %>%
-    sort(decreasing = TRUE) %>%
-    head(1000) %>% 
-    names()
-  
-  most_variable_1k = geneCounts_DGE$counts %>%
-    as.data.frame() %>%
-    dplyr::filter(row.names(geneCounts_DGE$counts) %in% top_var_genes_1k)
-  
-  # fit UMAP
-  umap_fit = umap::umap(t(most_variable_1k))
-  colnames(umap_fit$layout) = c("UMAP1", "UMAP2")
-  umap_df = umap_fit$layout %>% as.data.frame()
-  # add metadata
-  umap_df$cancer_type = metadata_fltr$gdc_cases.project.project_id_1_1
-  umap_df$race = metadata_fltr$gdc_cases.demographic.race_1_1
-  umap_df$sex = metadata_fltr$gdc_cases.demographic.gender_1_1
-  
-  # export
-  write.table(umap_df,
-    file = "./data/TCGA_PanCan_data.RNAseq.UMAP.tsv",
-    quote = FALSE, sep = "\t", col.names = TRUE, row.names = TRUE
-  )
-  
-}
-
-
-# plot
-custom_palette = rev(grDevices::colorRampPalette(RColorBrewer::brewer.pal(7, "RdPu"))(length(unique(umap_df$cancer_type))))
-
-ggplot(umap_df, aes(x = UMAP1, y = UMAP2)) +
-       geom_point(aes(color = cancer_type, fill = cancer_type),
-                  size = 1, alpha = 0.5) +
-       stat_ellipse(data = subset(umap_df, cancer_type %in% c("TCGA-KICH", "TCGA-KIRC", "TCGA-KIRP")),
-                    aes(group = cancer_type, color = cancer_type), type = "euclid", linetype = 2) +
-       #geom_text(aes(label = ifelse(cancer_type %in% c("TCGA-KIRP"), as.character(cancer_type), "")), hjust = 0, vjust = 0) +
-       guides(color = guide_legend(override.aes = list(size = 4)),
-              fill = "none") +
-       #scale_color_manual(values = custom_palette) +  # Apply custom color palette
-       #scale_fill_manual(values = custom_palette) +   # Apply custom color palette to fill as well
-       labs(x = "UMAP1",
-            y = "UMAP2",
-            fill = "cancer type") +
-       theme(plot.title = element_blank(),
-             legend.position = "bottom", 
-             legend.background = element_rect(colour = "grey25", size = 0.5),
-             panel.background = element_rect(fill = NA, colour = "black"),
-             panel.grid.major = element_line(colour = "grey90"),
-             panel.grid.minor = element_line(colour = "grey90"))
       
 
 ```
@@ -165,7 +297,7 @@ ggplot(umap_df, aes(x = UMAP1, y = UMAP2)) +
 
 
 
-### Prognosis Outcome {#sec-dataset-exploration}
+### Prognosis Outcome 
 
 Of the 887 petients with kidney tumor, 659 were alive at the time of the last check up, while 228 died. It appears that KIRC patients (48.7% dead) have worse prognosis than KIRP patients (17.9% dead), as observed in the previous comparisons. However, before drawing a formal conclusion, we should validate this observation at least in another independent cohort.
 
@@ -175,20 +307,13 @@ Of the 887 petients with kidney tumor, 659 were alive at the time of the last ch
 #| warning: FALSE
 
 # prep table
-vital_status_table = metadata_summary %>%
-  dplyr::filter(covariate == "vital_status") 
-rownames(vital_status_table) = vital_status_table$covariate_val
-vital_status_table = vital_status_table %>%
-  dplyr::select(-c("covariate", "covariate_val")) %>%
-  as.matrix() %>%
-  t()
-class(vital_status_table) = "numeric"
+species_table = read.delim("data/species.txt")
 
 # print metadata table
 DT::datatable(
-  vital_status_table,
+  species_table,
   extensions = c("FixedColumns", "FixedHeader"),
-  caption = "Table 7: Contigency table, Prognosis Outcome", 
+  caption = "Table 1: Species used in the study", 
   options = list(
     scrollX = TRUE, paging = TRUE, fixedHeader = FALSE, pageLength = 10
   )
@@ -200,8 +325,31 @@ DT::datatable(
 
 
 
-## Lessons Learnt {#sec-lesson-learnt-gather-datasets-and-QC}
 
+
+
+
+The gene matrix occupancy and gene length distribution across organellar genomes included in this study are presented in Fig. S2. Most selected genes are present/ nearly present in all studied sequences. In 29 selected genes for mitochondrial, there are two genes, rps3 and rps4 that are not presented in more than 10% of the 37 mt genomic sequences. For chloroplast, there are 10 out of 70 genes not presented in more than 10% of the 34 cp genomic sequences. The gene length distribution for cp and mt genes are …mean/median (range)…, respectively.
+Trees estimated by the ML and coalescent methods were well-supported and congruent, although slightly different topologies were recovered for different methods applied for different datasets (cp, mt and cp+mt) (Fig.1, Fig. S3). For the cp+mt tree, the topology of ML and coalescent trees are mostly congruent. The difference in the topology happens mostly within large species clades, e.g., clade contains U. australis or U. compressa genomes. The notorious difference is the position of U.fene vs. Ulva sp4. The results from the correlation between the common nodes and MAST% are highly concordant. They indicate that the topology of phylogenetic trees constructed by the two methods (ML and coalescence) and different datasets (cp, mt and cp+mt) is highly similar, except for the topology of the mt phylogenetic tree constructed by the ML method (The correlation between the common nodes) and the coalescent method (MAST%). Results from RF and KF matrices are more varied, but both also show the topology of species tree constructed using mt genomes ML is less similar compared to other species trees.
+
+
+
+Figure 1. (A). Consensus Ulva species tree based on the (49) concatenated chloroplast and mitochondrial genomes. The colors of circle at each node show the confident level of supporting values (bootstrap value for ML tree and posterior value for coalescence tree). Black circles indicate nodes with at least 95% support while grey circles indicate nodes with support values in the range of 75-95% and white circles indicate nodes with support values less than 75%. The blue lines show the identical topology between ML and coalescence tree while grey lines indicate difference in topology within species and red lines indicate difference in topology between species. (B). Four metrics, namely the correlation between the common nodes (common_nodes_corr), Robinson-Foulds (RF), Kuhner-Felsenstein (KF), and Maximum Agreement Subtree (MAST) used to assess the concordance of the Ulva species tree reconstructed from supermatrix and coalescence-based analyses obtained from the analyses of chloroplast genes, mitochondrial genes and chloroplast and mitochondrial genes. Higher values in correlation between the common_nodes_corr and MAST indicate the higher similarity between topology while lower values in correlation between the RF and KF indicate the higher similarity between topology.
+
+
+
+
+
+
+Among the 70 cp genes chosen, the four indices RF, KF, MAST and the correlation between the common nodes metrics pointed out 24 unique cp genes that provide the most similar topology compared to the species tree constructed using 70 genes, namely accD, atpF, chlI, petB, psaA, psaB, psbB, psbD, rpl12, rpl19, rpl2, rpl32, rpoA, rpoB, rpoC1, rpoC2, rps12, rps2, rps4, rps8, rps9, tufA, ycf1, and ycf20 (Table 1). Among them, several genes such as psaA, psaB, and psbB are consistently identified by different matrices. Similarly, the same approach applied to the Ulva species trees reconstructed using mt suggested 19 unique mt genes, namely atp1, atp6, cob, cox1, cox2, cox3, nad2, nad4, nad5, nad7, rpl14, rpl16, rps10, rps11, rps14, rps19, rps2, rps3, and rps4, of which several genes such as atp6, cox1, cox2, rps3, and rps10 are suggested by different indices. Since the Ulva specimens used in this study do not always have both cp and mt genomes, the Ulva species trees reconstructed using cp and mt supermatrix have different set of tips, depending on the availability of the genomes. Prior analyses suggested that MAST% and common correlation nodes metrics are the best performers to assess phylogenetic tree distances when the tree do not have the same set of tips, we then selected (arbitrarily) 10 genes for the combinatorial approach, petB, psaA, psaB, psbB, psbD, rps2, atp6, cox1, cox2, and mt_rps3, based on the top 10 single gene ML trees with topology closest to cp_mt_ML. The first six genes are cp genes while the other four genes are mt genes. 
+
+
+
+From the combination of 2 to 10 selected genes, 1,013 species trees were generated (45 species trees for 2 genes, 120 species trees for 3 genes, 210 species trees for 4 genes, 252 species trees for 5 genes,210 species trees for 6 genes, 120 species trees for 7 genes, 45 species trees for 8 genes, 10 species trees for 9 genes and 1 species trees for 10 genes). After filtering for combinations containing both a cp and an mt marker, a total of 945 trees remained, comprising of 24 species trees for 2 genes, 96 species trees for 3 genes, 194 species trees for 4 genes, 246 species trees for 5 genes, 209 species trees for 6 genes, 120 species trees for 7 genes, 45 species trees for 8 genes, 10 species trees for 9 genes, and 1 species trees for 10 genes. For each combination, a representative combination with the highest the MAST% and the common node correlation are shown in the Table 2. The best combination to use for the development of Ulva organellar universal markers should be the combination with the highest values of the two indices and the lowest number of markers in the combination. The combination with five to eight markers has the highest value for the MAST% and the highest value for the common node correlation, but given the number of markers, it might pose more challenges for the development process later. The combination with four markers, psbD, psaA, cox1, cox2, which also has the highest value for the MAST% and has the value for the common node correlation slightly lower than the highest value, is chosen for the next step. This combination comprises of two cp genes, psbD, psaA, and two mt genes, cox1, cox2.
+
+
+
+## Lessons Learnt {#sec-lesson-learnt-cp-and-mt-phylogeny}
 So far, we have learnt:
 
 * TCGA is a public resource with a wide collection of samples from cancer biopsies from patients affected by 32 different cancer types.

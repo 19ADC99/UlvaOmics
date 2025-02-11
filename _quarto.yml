@@ -35,7 +35,7 @@ book:
     chapters:
       - index.qmd
       - cp-and-mt-phylogeny.qmd
-      - marker-selection.qmd
+      - markers-selection.qmd
 
 format:
     html:
