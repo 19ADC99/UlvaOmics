@@ -26,7 +26,563 @@ Biological insights and take-home messages are at the bottom of the page at Less
 * We then explore the association between each Kidney Cancer subtype and the major clinical covariates (e.g.: sex, disease status, cancer stage, clinical outcome).
 
 
-## Selection of Kidney samples
+## Organellar gene selection
+
+select genes based on their distance to the reconstructed CP+MT phylogenetic three
+
+we select only 10 genes (6 cp and 4 mt) because doing the combination with all the 99 genes wilñl take forever
+
+
+### gene distances to species three
+
+
+```{r, eval=FALSE}
+
+
+#------------------------------------------------------------------------------#
+## 3.3 - Genes distances                                                    ####
+
+# get cp ML gene trees
+cp_ML_genes = list()
+filenames = list.files("./03_cp_singleGene_ML/", pattern = "*.contree", full.names = TRUE)
+cp_ML_genes = lapply(filenames, ape::read.tree)
+names(cp_ML_genes) = str_remove_all(str_remove_all(filenames, "./03_cp_singleGene_ML//"), ".aln.contree")
+cp_ML_genes[["cp_mt_ML"]] = phylogenetic_trees[["cp_mt_ML"]][["tree"]]
+
+# get mt ML gene trees
+mt_ML_genes = list()
+filenames = list.files("./03_mt_singleGene_ML/", pattern = "*.contree", full.names = TRUE)
+mt_ML_genes = lapply(filenames, ape::read.tree)
+names(mt_ML_genes) = str_remove_all(str_remove_all(filenames, "./03_mt_singleGene_ML//"), ".aln.contree")
+mt_ML_genes[["cp_mt_ML"]] = phylogenetic_trees[["cp_mt_ML"]][["tree"]]
+
+# create distance lists
+empty_matrix = matrix(nrow = length(cp_ML_genes), ncol = length(cp_ML_genes))
+colnames(empty_matrix) = names(cp_ML_genes)
+rownames(empty_matrix) = names(cp_ML_genes)
+cp_genes_distances = list("common_nodes_corr" = empty_matrix,
+                          "RF" = empty_matrix,
+                          "KF" = empty_matrix,
+                          "MAST_%" = empty_matrix)
+
+empty_matrix = matrix(nrow = length(mt_ML_genes), ncol = length(mt_ML_genes))
+colnames(empty_matrix) = names(mt_ML_genes)
+rownames(empty_matrix) = names(mt_ML_genes)
+mt_genes_distances = list("common_nodes_corr" = empty_matrix,
+                          "RF" = empty_matrix,
+                          "KF" = empty_matrix,
+                          "MAST_%" = empty_matrix)
+
+empty_matrix = matrix(nrow = length(genes_sets[["cp_mt_ML"]]), ncol = length(genes_sets[["cp_mt_ML"]]))
+colnames(empty_matrix) = names(genes_sets[["cp_mt_ML"]])
+rownames(empty_matrix) = names(genes_sets[["cp_mt_ML"]])
+cp_mt_genes_distances = list("common_nodes_corr" = empty_matrix,
+                             "RF" = empty_matrix,
+                             "KF" = empty_matrix,
+                             "MAST_%" = empty_matrix)
+
+
+# populate distances lists
+genes_sets = list("cp_ML" = cp_ML_genes,
+                  "mt_ML" = mt_ML_genes,
+                  "cp_mt_ML" = c(cp_ML_genes, mt_ML_genes[which(names(mt_ML_genes) != "cp_mt_ML")]))
+distance_sets = list("cp_genes_distances" = cp_genes_distances,
+                     "mt_genes_distances" = mt_genes_distances,
+                     "cp_mt_genes_distances" = cp_mt_genes_distances)
+
+# get pairwise distances
+for(j in 1:length(distance_sets)){
+  for(i in 1:length(genes_sets[[j]])){
+    for(k in 1:length(genes_sets[[j]])){
+      
+      # error handling
+      # MAST call errors for very unresulved trees (e.g.: psaM)
+      #   Error in root.phylo(x, bipart_x, resolve.root = TRUE) : 
+      #   the specified outgroup is not monophyletic
+      # catch error and move forward
+      skip_to_next = FALSE
+      
+      # get tree
+      tree1_tmp = genes_sets[[j]][[i]]
+      tree2_tmp = genes_sets[[j]][[k]]
+      
+      # list of common species
+      species_list = tree1_tmp$tip.label[which(tree1_tmp$tip.label %in% tree2_tmp$tip.label)]
+      
+      # get overlapping species
+      tree1 = ape::keep.tip(tree1_tmp, species_list)
+      tree2 = ape::keep.tip(tree2_tmp, species_list)
+      
+      # get distances
+      distances = phangorn::treedist(tree1, tree2)
+      distance_sets[[j]][["RF"]][i, k] = distances[[1]]
+      distance_sets[[j]][["KF"]][i, k] = distances[[2]]
+      #dist_DB_pairwise[["path_diff"]][i, k] = distances[[3]]
+      distance_sets[[j]][["MAST_%"]][i, k] = tryCatch(length(phangorn::mast(tree1, tree2, tree = FALSE)) / length(species_list),
+                                                      error = function(e) { skip_to_next <<- TRUE })
+      
+      # error handling
+      if(skip_to_next){distance_sets[[j]][["MAST_%"]][i, k] = NA}
+    }
+  }
+}
+
+
+### get pairwise common_nodes_corr distances
+
+# create CPU cluster
+cl = parallel::makeCluster(8, type = "SOCK")
+registerDoSNOW(cl)
+
+# get chronos in parallel
+chronos_list = foreach(k = 1:length(genes_sets[["cp_mt_ML"]]), .combine = "c") %dopar% {
+  library("ape")
+  # get tree
+  tryCatch(chronos(genes_sets[["cp_mt_ML"]][[k]]), error = function(e) { NA })
+}  
+parallel::stopCluster(cl)
+names(chronos_list) = names(genes_sets[["cp_mt_ML"]])
+
+# get pairwise common_nodes_corr distances
+for(j in 1:length(distance_sets)){
+  for(i in 1:length(genes_sets[[j]])){
+    for(k in 1:length(genes_sets[[j]])){
+      
+      # get trees
+      tree1_tmp = chronos_list[[names(genes_sets[[j]])[i]]]
+      tree2_tmp = chronos_list[[names(genes_sets[[j]])[k]]]
+      
+      # check trees and get distance
+      if(all(!is.na(tree1_tmp)) & all(!is.na(tree2_tmp))){
+        distance_sets[[j]][["common_nodes_corr"]][i, k] = cor.dendlist(
+          dendlist(as.dendrogram(tree1_tmp), as.dendrogram(tree2_tmp)),
+          method = "common_nodes")[2]
+      } else {
+        distance_sets[[j]][["common_nodes_corr"]][i, k] = NA
+      }
+    }
+  }
+}
+
+
+# rename matrices for cp/mt overlapping rpl/rps genes (for plotting reasons)
+for(i in 1:length(distance_sets[["mt_genes_distances"]])){
+  rownames(distance_sets[["mt_genes_distances"]][[i]]) = c("atp1", "atp4", "atp6", "atp8", "atp9", "cob", "cox1", "cox2", "cox3", "nad1", "nad2",
+                                        "nad3", "nad4", "nad4L", "nad5", "nad6", "nad7", "rpl14 ", "rpl16 ", "rpl5 ", "rps10",
+                                        "rps11 ", "rps12 ", "rps13", "rps14 ", "rps19 ", "rps2 ", "rps3 ", "rps4 ", "cp_mt_ML")
+  colnames(distance_sets[["mt_genes_distances"]][[i]]) = c("atp1", "atp4", "atp6", "atp8", "atp9", "cob", "cox1", "cox2", "cox3", "nad1", "nad2",
+                                        "nad3", "nad4", "nad4L", "nad5", "nad6", "nad7", "rpl14 ", "rpl16 ", "rpl5 ", "rps10",
+                                        "rps11 ", "rps12 ", "rps13", "rps14 ", "rps19 ", "rps2 ", "rps3 ", "rps4 ", "cp_mt_ML")
+}
+for(i in 1:length(distance_sets[["cp_mt_genes_distances"]])){
+  rownames(distance_sets[["cp_mt_genes_distances"]][[i]]) = c("accD", "atpA", "atpB", "atpE", "atpF", "atpH", "atpI", "ccsA", "cemA", "chlI", "clpP",
+                                           "infA", "petA", "petB", "petD", "petG", "petL", "psaA", "psaB", "psaC", "psaI", "psaJ",
+                                           "psaM", "psbA", "psbB", "psbC", "psbD", "psbE", "psbF", "psbH", "psbI", "psbJ", "psbK",
+                                           "psbL", "psbM", "psbN", "psbT", "psbZ", "rbcL", "rpl12", "rpl14", "rpl16", "rpl19", "rpl2",
+                                           "rpl20", "rpl23", "rpl32", "rpl36", "rpl5", "rpoA", "rpoB", "rpoC1", "rpoC2", "rps11",
+                                           "rps12", "rps14", "rps18", "rps19", "rps2", "rps3",  "rps4", "rps7", "rps8", "rps9",
+                                           "tufA", "ycf1", "ycf12", "ycf20", "ycf3", "ycf4", "cp_mt_ML", "atp1", "atp4", "atp6",
+                                           "atp8", "atp9", "cob", "cox1", "cox2", "cox3", "nad1", "nad2", "nad3", "nad4", "nad4L",
+                                           "nad5", "nad6", "nad7", "rpl14 ", "rpl16 ", "rpl5 ", "rps10", "rps11 ", "rps12 ", "rps13",
+                                           "rps14 ", "rps19 ", "rps2 ", "rps3 ", "rps4 ")
+  colnames(distance_sets[["cp_mt_genes_distances"]][[i]]) = c("accD", "atpA", "atpB", "atpE", "atpF", "atpH", "atpI", "ccsA", "cemA", "chlI", "clpP",
+                                           "infA", "petA", "petB", "petD", "petG", "petL", "psaA", "psaB", "psaC", "psaI", "psaJ",
+                                           "psaM", "psbA", "psbB", "psbC", "psbD", "psbE", "psbF", "psbH", "psbI", "psbJ", "psbK",
+                                           "psbL", "psbM", "psbN", "psbT", "psbZ", "rbcL", "rpl12", "rpl14", "rpl16", "rpl19", "rpl2",
+                                           "rpl20", "rpl23", "rpl32", "rpl36", "rpl5", "rpoA", "rpoB", "rpoC1", "rpoC2", "rps11",
+                                           "rps12", "rps14", "rps18", "rps19", "rps2", "rps3",  "rps4", "rps7", "rps8", "rps9",
+                                           "tufA", "ycf1", "ycf12", "ycf20", "ycf3", "ycf4", "cp_mt_ML", "atp1", "atp4", "atp6",
+                                           "atp8", "atp9", "cob", "cox1", "cox2", "cox3", "nad1", "nad2", "nad3", "nad4", "nad4L",
+                                           "nad5", "nad6", "nad7", "rpl14 ", "rpl16 ", "rpl5 ", "rps10", "rps11 ", "rps12 ", "rps13",
+                                           "rps14 ", "rps19 ", "rps2 ", "rps3 ", "rps4 ")
+}
+
+### plot heatmaps of distances
+# prepare gene lists
+cp_genes_list = c("accD", "atpA", "atpB", "atpE", "atpF", "atpH", "atpI", "ccsA", "cemA", "chlI", "clpP",
+                  "infA", "petA", "petB", "petD", "petG", "petL", "psaA", "psaB", "psaC", "psaI", "psaJ",
+                  "psaM", "psbA", "psbB", "psbC", "psbD", "psbE", "psbF", "psbH", "psbI", "psbJ", "psbK",
+                  "psbL", "psbM", "psbN", "psbT", "psbZ", "rbcL", "rpl12", "rpl14", "rpl16", "rpl19", "rpl2",
+                  "rpl20", "rpl23", "rpl32", "rpl36", "rpl5", "rpoA", "rpoB", "rpoC1", "rpoC2", "rps11",
+                  "rps12", "rps14", "rps18", "rps19", "rps2", "rps3",  "rps4", "rps7", "rps8", "rps9",
+                  "tufA", "ycf1", "ycf12", "ycf20", "ycf3", "ycf4")
+mt_genes_list = c("atp1", "atp4", "atp6", "atp8", "atp9", "cob", "cox1", "cox2", "cox3", "nad1", "nad2",
+                  "nad3", "nad4", "nad4L", "nad5", "nad6", "nad7", "rpl14 ", "rpl16 ", "rpl5 ", "rps10",
+                  "rps11 ", "rps12 ", "rps13", "rps14 ", "rps19 ", "rps2 ", "rps3 ", "rps4 ")
+
+# prepare plot lists
+distances_plots = list("cp" = list(), "mt" = list(), "cp_mt" = list())
+
+# iterate plots
+for(i in 1:length(distance_sets)){
+  for(k in 1:length(distance_sets[[i]])){
+    
+    # remove possible rows/columns with only NAs
+    tmp_matrix = distance_sets[[i]][[k]]
+    tmp_matrix = tmp_matrix[, colSums(is.na(tmp_matrix)) < nrow(tmp_matrix)]
+    tmp_matrix = tmp_matrix[rowSums(is.na(tmp_matrix)) < ncol(tmp_matrix), ]
+    
+    # get names
+    plot_name = ifelse(names(distance_sets[[i]])[[k]] == "common_nodes_corr", "common\nnodes\ncorr", names(distance_sets[[i]])[[k]])
+    
+    # prep annotation
+    organell = as.data.frame(ifelse(rownames(tmp_matrix) %in% cp_genes_list, "cp",
+                                    ifelse(rownames(tmp_matrix) %in% mt_genes_list, "mt", "cp_mt")))
+    rownames(organell) = rownames(tmp_matrix)
+    colnames(organell) = "organell"
+    organell$color = ifelse(organell$organell == "cp", "#469d89", ifelse(organell$organell == "mt", "steelblue", "red"))
+    
+    # plot raw distance
+    distances_plots[[i]][[k]] = grid.grabExpr(draw(ComplexHeatmap::Heatmap(tmp_matrix,
+                                                                           col = colorRamp2(c(min(tmp_matrix[!is.na(tmp_matrix)]),
+                                                                                              max(tmp_matrix[!is.na(tmp_matrix)])),
+                                                                                            c("white", "#D55E00")),
+                                                                           row_names_gp = gpar(col = organell$color),
+                                                                           column_names_gp = gpar(col = organell$color),
+                                                                           top_annotation = HeatmapAnnotation(organell = as.matrix(organell$organell),
+                                                                                                              show_annotation_name = FALSE,
+                                                                                                              show_legend = FALSE,
+                                                                                                              col = list(organell = c("cp_mt" = "red", "cp" = "#469d89", "mt" = "steelblue"))),
+                                                                           left_annotation = rowAnnotation(organell = as.matrix(organell$organell),
+                                                                                                           show_annotation_name = FALSE,
+                                                                                                           col = list(organell = c("cp_mt" = "red", "cp" = "#469d89", "mt" = "steelblue"))),
+                                                                           name = plot_name)))
+    grid.newpage(recording = TRUE)
+    grid.draw(distances_plots[[i]][[k]])
+
+    # normalize
+    normalized = t(scale(t(tmp_matrix)))
+    # plot normalized distances
+    distances_plots[[i]][[k + 4]] = grid.grabExpr(draw(ComplexHeatmap::Heatmap(normalized,
+                                                                               col = colorRamp2(c(min(normalized[!is.na(normalized)]), 0, max(normalized[!is.na(normalized)])),
+                                                                                                c("#56B4E9", "white", "#D55E00")),
+                                                                               row_names_gp = gpar(col = organell$color),
+                                                                               column_names_gp = gpar(col = organell$color),
+                                                                               top_annotation = HeatmapAnnotation(organell = as.matrix(organell$organell),
+                                                                                                                  show_annotation_name = FALSE,
+                                                                                                                  show_legend = FALSE,
+                                                                                                                  col = list(organell = c("cp_mt" = "red", "cp" = "#469d89", "mt" = "steelblue"))),
+                                                                               left_annotation = rowAnnotation(organell = as.matrix(organell$organell),
+                                                                                                               show_annotation_name = FALSE,
+                                                                                                               col = list(organell = c("cp_mt" = "red", "cp" = "#469d89", "mt" = "steelblue"))),
+                                                                               name = paste(plot_name, "\nz-score", sep = ""))))
+    grid.newpage(recording = TRUE)
+    grid.draw(distances_plots[[i]][[k + 4]])
+  }
+}
+
+# composite plots
+for(i in 1:length(distances_plots)){
+  grid.arrange(distances_plots[[i]][[1]], distances_plots[[i]][[2]],
+               distances_plots[[i]][[3]], distances_plots[[i]][[4]],
+               ncol = 2,
+               top = textGrob(paste(names(distances_plots)[i], " raw distance", sep = "")))
+  grid.arrange(distances_plots[[i]][[5]], distances_plots[[i]][[6]],
+               distances_plots[[i]][[7]], distances_plots[[i]][[8]],
+               ncol = 2,
+               top = textGrob(paste(names(distances_plots)[i], " normalized distance", sep = "")))
+  grid.arrange(distances_plots[[i]][[1]], distances_plots[[i]][[2]], distances_plots[[i]][[3]], distances_plots[[i]][[4]],
+               distances_plots[[i]][[5]], distances_plots[[i]][[6]], distances_plots[[i]][[7]], distances_plots[[i]][[8]],
+               ncol = 4,
+               top = textGrob(paste(names(distances_plots)[i], " raw and normalized distance", sep = "")))
+}
+
+# export tables
+for(i in 1:length(distance_sets)){
+  for(k in 1:length(distance_sets[[i]])){
+    write.table(distance_sets[[i]][[k]],
+                file = paste("./08_genes_distances/", names(distance_sets)[i], ".distances.", names(distance_sets[[i]])[k], ".txt", sep = ""),
+                quote = FALSE, sep = '\t', col.names = TRUE, row.names = TRUE)
+  }
+}
+
+# clean up
+cp_genes_distances = distance_sets[["cp_genes_distances"]]
+mt_genes_distances = distance_sets[["mt_genes_distances"]]
+cp_mt_genes_distances = distance_sets[["cp_mt_genes_distances"]]
+rm(tree1_tmp, tree2_tmp, tree1, tree2, species_list, distances,
+   distance_sets, chronos_list, plot_name, tmp_matrix, genes_sets, skip_to_next)
+
+# close the pdf file
+dev.off()
+
+# export distance tables
+for(i in 1:length(cp_genes_distances)){
+  write.table(cp_genes_distances[[i]],
+              file = paste("UlvaOmics.", format(Sys.Date(), format = "%Y%m%d"), ".04_Single_genes_stats.cp.", names(cp_genes_distances)[i], ".txt",  sep = ""),
+              quote = FALSE, sep = '\t', col.names = TRUE, row.names = TRUE)
+}
+for(i in 1:length(mt_genes_distances)){
+  write.table(mt_genes_distances[[i]],
+              file = paste("UlvaOmics.", format(Sys.Date(), format = "%Y%m%d"), ".04_Single_genes_stats.mt.", names(mt_genes_distances)[i], ".txt",  sep = ""),
+              quote = FALSE, sep = '\t', col.names = TRUE, row.names = TRUE)
+}
+for(i in 1:length(cp_mt_genes_distances)){
+  write.table(cp_mt_genes_distances[[i]],
+              file = paste("UlvaOmics.", format(Sys.Date(), format = "%Y%m%d"), ".04_Single_genes_stats.cp_mt.", names(cp_mt_genes_distances)[i], ".txt",  sep = ""),
+              quote = FALSE, sep = '\t', col.names = TRUE, row.names = TRUE)
+}
+
+
+
+```
+
+
+
+
+
+## Markers selection
+
+We use a combinatorial approach to select the minimum list of genes to approxima te the CP+MT species three
+
+
+### cp only
+
+ss
+
+
+### mt only
+
+ss
+
+### cp + mt 
+
+ss
+
+
+```{r, eval=FALSE}
+
+
+# declare gene lists
+cp_genes = c("petB", "psaA", "psaB", "psbB", "psbD", "rps2")
+mt_genes = c("atp6", "cox1", "cox2", "rps3")
+
+# import ref species tree
+cp_mt_ML_dendro = ape::read.tree(file = "06_cp_mt_concat_ML/cp_mt_allgenes_concat.contree")
+
+# create empty list of trees
+combinatorial_trees = list("cp_mt_conc_2_genes" = list("cp_mt_ML" = cp_mt_ML_dendro),
+                           "cp_mt_conc_3_genes" = list("cp_mt_ML" = cp_mt_ML_dendro),
+                           "cp_mt_conc_4_genes" = list("cp_mt_ML" = cp_mt_ML_dendro),
+                           "cp_mt_conc_5_genes" = list("cp_mt_ML" = cp_mt_ML_dendro),
+                           "cp_mt_conc_6_genes" = list("cp_mt_ML" = cp_mt_ML_dendro),
+                           "cp_mt_conc_7_genes" = list("cp_mt_ML" = cp_mt_ML_dendro),
+                           "cp_mt_conc_8_genes" = list("cp_mt_ML" = cp_mt_ML_dendro),
+                           "cp_mt_conc_9_genes" = list("cp_mt_ML" = cp_mt_ML_dendro),
+                           "cp_mt_conc_10_genes" = list("cp_mt_ML" = cp_mt_ML_dendro))
+
+# populate combinatorial trees
+for(k in 2:10){
+  
+  # get file list
+  tree_list_all = list.files(path = paste(mainDir, "/09_combinatorial_phylogeny/01_cp_mt_combinatorial/cp_mt_conc_", k, "_genes", sep = ""),
+                             pattern = "\\.contree$")
+  # keep only trees with both cp and mt markers
+  tree_list_fltr = c()
+  for(tree in tree_list_all){
+    cp = FALSE
+    mt = FALSE
+    # check if cp is present
+    for(gene in cp_genes){
+      if(grepl(gene, tree, fixed = TRUE)){
+        cp = TRUE
+      }
+    }
+    # check if mt is present
+    for(gene in mt_genes){
+      if(grepl(gene, tree, fixed = TRUE)){
+        mt = TRUE
+      }
+    }
+    if(cp == TRUE & mt == TRUE){
+      tree_list_fltr = c(tree_list_fltr, tree)
+    }
+  }
+  
+  # import trees
+  for(tree in tree_list_fltr){
+    combinatorial_trees[[paste("cp_mt_conc_", k, "_genes", sep = "")]][[length(combinatorial_trees[[paste("cp_mt_conc_", k, "_genes", sep = "")]]) + 1]] = ape::read.tree(file = paste(mainDir, "/09_combinatorial_phylogeny/01_cp_mt_combinatorial/cp_mt_conc_", k, "_genes/", tree, sep = ""))
+    names(combinatorial_trees[[paste("cp_mt_conc_", k, "_genes", sep = "")]])[[length(combinatorial_trees[[paste("cp_mt_conc_", k, "_genes", sep = "")]])]] = stringr::str_remove(tree, ".aln.contree")
+  }
+  
+  # clean
+  rm(cp, gene, k, mt, tree, tree_list_all, tree_list_fltr)
+}
+
+
+
+#------------------------------------------------------------------------------#
+## 2.2 - Get distance matrices                                              ####
+
+# create distance lists
+combinatorial_distances = list("cp_mt_conc_2_genes" = NULL,
+                               "cp_mt_conc_3_genes" = NULL,
+                               "cp_mt_conc_4_genes" = NULL,
+                               "cp_mt_conc_5_genes" = NULL,
+                               "cp_mt_conc_6_genes" = NULL,
+                               "cp_mt_conc_7_genes" = NULL,
+                               "cp_mt_conc_8_genes" = NULL,
+                               "cp_mt_conc_9_genes" = NULL,
+                               "cp_mt_conc_10_genes" = NULL)
+
+# populate distance lists
+combinatorial_list = c(25, 97, 195, 247, 210, 121, 46, 11, 2)
+for(k in 1:length(combinatorial_distances)){
+  
+  # get size of the results matrix
+  empty_matrix = matrix(nrow = combinatorial_list[[k]],
+                        ncol = combinatorial_list[[k]])
+  colnames(empty_matrix) = names(combinatorial_trees[[k]])
+  rownames(empty_matrix) = names(combinatorial_trees[[k]])
+  
+  # populate
+  combinatorial_distances[[k]] = list("common_nodes_corr" = empty_matrix,
+                                      "RF" = empty_matrix,
+                                      "KF" = empty_matrix,
+                                      "MAST_%" = empty_matrix)
+  
+  # clean
+  rm(empty_matrix)
+}
+
+# get pairwise distances
+for(j in 1:length(combinatorial_trees)){
+  for(i in 1:length(combinatorial_trees[[j]])){
+    for(k in 1:length(combinatorial_trees[[j]])){
+      
+      # get tree
+      tree1_tmp = combinatorial_trees[[j]][[i]]
+      tree2_tmp = combinatorial_trees[[j]][[k]]
+
+      # list of common species
+      species_list = tree1_tmp$tip.label[which(tree1_tmp$tip.label %in% tree2_tmp$tip.label)]
+
+      # get overlapping species
+      tree1 = ape::keep.tip(tree1_tmp, species_list)
+      tree2 = ape::keep.tip(tree2_tmp, species_list)
+      
+      # get distances
+      distances = phangorn::treedist(tree1, tree2)
+      combinatorial_distances[[j]][["RF"]][i, k] = distances[[1]]
+      combinatorial_distances[[j]][["KF"]][i, k] = distances[[2]]
+      combinatorial_distances[[j]][["MAST_%"]][i, k] = length(phangorn::mast(tree1, tree2, tree = FALSE)) / length(species_list)
+      
+      # clean
+      rm(tree1, tree2, tree1_tmp, tree2_tmp, distances)
+    }
+  }
+}
+
+
+### get pairwise common_nodes_corr distances
+
+# iterate all combinatorial trees
+for(j in 1:length(combinatorial_trees)){
+  
+  # create CPU cluster
+  cl = parallel::makeCluster(8, type = "SOCK")
+  doSNOW::registerDoSNOW(cl)
+  
+  # get chronos in parallel
+  chronos_list = foreach(k = 1:length(combinatorial_trees[[j]]), .combine = "c") %dopar% {
+    library("ape")
+    # get tree
+    tryCatch(chronos(combinatorial_trees[[j]][[k]]), error = function(e) { NA })
+  }  
+  parallel::stopCluster(cl)
+  names(chronos_list) = names(combinatorial_trees[[j]])
+  
+  # get pairwise common_nodes_corr distances
+  for(i in 1:length(combinatorial_trees[[j]])){
+    for(k in 1:length(combinatorial_trees[[j]])){
+      
+      print(paste(j, i, k, sep = ","))
+      
+      # get trees
+      tree1_tmp = chronos_list[[names(combinatorial_trees[[j]])[i]]]
+      tree2_tmp = chronos_list[[names(combinatorial_trees[[j]])[k]]]
+      
+      # check trees and get distance
+      if(all(!is.na(tree1_tmp)) & all(!is.na(tree2_tmp))){
+        combinatorial_distances[[j]][["common_nodes_corr"]][i, k] = tryCatch(
+          cor.dendlist(dendlist(as.dendrogram(ape::root(tree1_tmp, outgroup = c("Oviri", "Pakin"), resolve.root = TRUE)),
+                                as.dendrogram(ape::root(tree2_tmp, outgroup = c("Oviri", "Pakin"), resolve.root = TRUE))),
+                       method = "common_nodes")[2],
+          error = function(e) { NA })
+      } else {
+        combinatorial_distances[[j]][["common_nodes_corr"]][i, k] = NA
+      }
+    }
+  }
+}
+
+
+## export the distance matrices
+for(i in 1:length(combinatorial_distances)){
+  write.table(combinatorial_distances[[i]][["common_nodes_corr"]],
+              file = paste("UlvaOmics.", format(Sys.Date(), format = "%Y%m%d"), ".05_combinatorial_stats.cp_mt_conc_", i + 1, "_genes.common_nodes_corr.txt",  sep = ""),
+              quote = FALSE, sep = '\t', col.names = TRUE, row.names = TRUE)
+  write.table(combinatorial_distances[[i]][["RF"]],
+              file = paste("UlvaOmics.", format(Sys.Date(), format = "%Y%m%d"), ".05_combinatorial_stats.cp_mt_conc_", i + 1, "_genes.RF.txt",  sep = ""),
+              quote = FALSE, sep = '\t', col.names = TRUE, row.names = TRUE)
+  write.table(combinatorial_distances[[i]][["KF"]],
+              file = paste("UlvaOmics.", format(Sys.Date(), format = "%Y%m%d"), ".05_combinatorial_stats.cp_mt_conc_", i + 1, "_genes.KF.txt",  sep = ""),
+              quote = FALSE, sep = '\t', col.names = TRUE, row.names = TRUE)
+  write.table(combinatorial_distances[[i]][["MAST_%"]],
+              file = paste("UlvaOmics.", format(Sys.Date(), format = "%Y%m%d"), ".05_combinatorial_stats.cp_mt_conc_", i + 1, "_genes.MAST_%.txt",  sep = ""),
+              quote = FALSE, sep = '\t', col.names = TRUE, row.names = TRUE)
+}
+
+
+
+#------------------------------------------------------------------------------#
+## 2.3 - Plot distance matrices                                             ####
+
+
+# 
+# for(k in 1:length(combinatorial_distances)){
+#   
+#   # remove possible rows/columns with only NAs
+#   tmp_matrix = distance_sets[[i]][[k]]
+#   tmp_matrix = tmp_matrix[, colSums(is.na(tmp_matrix)) < nrow(tmp_matrix)]
+#   tmp_matrix = tmp_matrix[rowSums(is.na(tmp_matrix)) < ncol(tmp_matrix), ]
+#   
+#   # get names
+#   plot_name = ifelse(names(distance_sets[[i]])[[k]] == "common_nodes_corr", "common\nnodes\ncorr", names(distance_sets[[i]])[[k]])
+#   
+#   # prep annotation
+#   organell = as.data.frame(ifelse(rownames(tmp_matrix) %in% cp_genes_list, "cp",
+#                                   ifelse(rownames(tmp_matrix) %in% mt_genes_list, "mt", "cp_mt")))
+#   rownames(organell) = rownames(tmp_matrix)
+#   colnames(organell) = "organell"
+#   organell$color = ifelse(organell$organell == "cp", "#469d89", ifelse(organell$organell == "mt", "steelblue", "red"))
+#   
+#   # plot raw distance
+#   distances_plots[[i]][[k]] = grid.grabExpr(draw(ComplexHeatmap::Heatmap(tmp_matrix,
+#                                                                          col = colorRamp2(c(min(tmp_matrix[!is.na(tmp_matrix)]),
+#                                                                                             max(tmp_matrix[!is.na(tmp_matrix)])),
+#                                                                                           c("white", "#D55E00")),
+#                                                                          row_names_gp = gpar(col = organell$color),
+#                                                                          column_names_gp = gpar(col = organell$color),
+#                                                                          top_annotation = HeatmapAnnotation(organell = as.matrix(organell$organell),
+#                                                                                                             show_annotation_name = FALSE,
+#                                                                                                             show_legend = FALSE,
+#                                                                                                             col = list(organell = c("cp_mt" = "red", "cp" = "#469d89", "mt" = "steelblue"))),
+#                                                                          left_annotation = rowAnnotation(organell = as.matrix(organell$organell),
+#                                                                                                          show_annotation_name = FALSE,
+#                                                                                                          col = list(organell = c("cp_mt" = "red", "cp" = "#469d89", "mt" = "steelblue"))),
+#                                                                          name = plot_name)))
+#   grid.newpage(recording = TRUE)
+#   grid.draw(distances_plots[[i]][[k]])
+# 
+# 
+# }
+
+
+```
+
+
+
 
 
 

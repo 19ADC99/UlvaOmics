@@ -1,0 +1,377 @@
+# Ulva organellar genomes retrieval and preparation
+
+
+```{r, echo=FALSE, include=FALSE}
+# load required libraries
+up_packages = c("ape", "circlize", "ComplexHeatmap", "corrplot", "DECIPHER", "dendextend", "doSNOW", "dplyr",
+                "foreach", "ggdist", "ggplot2", "ggtree", "gridExtra", "phangorn", "phylogram", "phytools",
+                "reshape", "RColorBrewer", "scales", "stringr", "TreeDist", "treeio")
+lapply(up_packages, require, character.only = TRUE)
+
+# set working directory
+mainDir = "/home/andrea/19ADC99/UlvaOmics"
+knitr::opts_knit$set(root.dir = mainDir)
+
+# source custom functions
+source("src/utils.R")
+```
+
+
+## On this page
+
+Biological insights and take-home messages are at the bottom of the page at Lesson Learnt: @sec-lesson-learnt-cp-and-mt-dataset-overview.
+
+* Here we retrieve Ulva organellar genomes
+* we investigate the 
+
+
+
+
+## Dataset overview
+
+
+### Dataset retrieval
+
+
+We included the following species, that as for 2022 where the most comprehensive list of cp and mt complete genomes published for Ulva.
+
+Oltmassiellopsis viridi and Pseudendoclonium akinetum were used as an outgroup to root the phylogenetic three.
+
+
+```{r}
+#| echo: FALSE
+#| warning: FALSE
+
+# prep table
+species_table = read.delim("data/species.txt")
+
+# print metadata table
+DT::datatable(
+  species_table,
+  extensions = c("FixedColumns", "FixedHeader"),
+  caption = "Table 1: Species used in the study", 
+  options = list(
+    scrollX = TRUE, paging = TRUE, fixedHeader = FALSE, pageLength = 10
+  )
+)
+
+```
+
+
+Organellar genome sequences and gene models were retrieved from NCBI, and corrected where necessary.
+
+
+
+### Gene occupancy
+
+The gene matrix occupancy and gene length distribution across organellar genomes included in this study are presented below. Most selected genes are present/ nearly present in all studied sequences. In 29 selected genes for mitochondrial, there are two genes, rps3 and rps4 that are not presented in more than 10% of the 37 mt genomic sequences. For chloroplast, there are 10 out of 70 genes not presented in more than 10% of the 34 cp genomic sequences.
+
+
+```{r}
+#| echo: TRUE
+#| result: hide
+#| code-fold: TRUE
+#| message: FALSE
+#| warning: FALSE
+#| fig.height: 6
+#| fig.cap: "Figure 1: Genes occupancy"
+
+# read tables
+cp_mt_genes_occupancy = read.delim("./data/cp_mt_genes_occupancy.tab")
+
+# drop last line which is uninformative
+cp_mt_genes_occupancy = head(cp_mt_genes_occupancy, -1)
+
+# format headers
+colnames(cp_mt_genes_occupancy) = stringr::str_remove_all(colnames(cp_mt_genes_occupancy), ".aln.fa")
+colnames(cp_mt_genes_occupancy) = stringr::str_replace_all(colnames(cp_mt_genes_occupancy), "X..Sequences", "Species")
+
+# melt and clean
+cp_mt_genes_occupancy = reshape2::melt(cp_mt_genes_occupancy)
+cp_mt_genes_occupancy$organell = ifelse(
+  stringr::str_detect(cp_mt_genes_occupancy$variable, "_cp_CDS_"),
+  "Chloroplast",
+  "Mitochondrion"
+)
+cp_mt_genes_occupancy$variable = stringr::str_remove_all(cp_mt_genes_occupancy$variable, "X02_cp_CDS_align.")
+cp_mt_genes_occupancy$variable = stringr::str_remove_all(cp_mt_genes_occupancy$variable, "X02_mt_CDS_align.")
+# set different number to assign different color to mitochondrial genes
+cp_mt_genes_occupancy$value = ifelse(
+  cp_mt_genes_occupancy$value == 1 & cp_mt_genes_occupancy$organell == "Mitochondrion",
+  2,
+  cp_mt_genes_occupancy$value
+)
+cp_mt_genes_occupancy$value = as.character(cp_mt_genes_occupancy$value)
+
+# plot
+p1 = ggplot(cp_mt_genes_occupancy) +
+  geom_tile(aes(x = variable, y = Species, fill = value), color = "grey75") +
+  scale_fill_manual(values = c("white", "#469d89", "steelblue")) +
+  facet_grid(~organell, scales = "free", space = "free_x") +
+  labs(x = "Genes",
+       y = "Species") +
+  theme(plot.title = element_text(size = 24, hjust = 0.5),
+        axis.ticks.x = element_blank(),
+        axis.ticks.y = element_blank(), 
+        axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
+        legend.position = "none",
+        panel.background = element_blank(),
+        panel.border = element_rect(colour = "black", fill = NA),
+        strip.background = element_rect(colour = "NA", fill = "NA"),
+        strip.placement = "outside",
+        strip.text = element_text(size = 10, angle = 0, vjust = 0.5, hjust = 0.5))
+plot(p1)
+
+
+```
+
+
+### Gene alignments distributions
+
+Next, we retrieved the CDS sequences and we align them. To do so, first we extract all CDSs that are longer than 200 bp from the .fasta .gff files pairs for each organellar genome.
+
+
+```{bash}
+#| echo: TRUE
+#| eval: FALSE
+#| result: hide
+#| code-fold: TRUE
+#| message: FALSE
+#| warning: FALSE
+
+# get CP genes list
+cut -f 9 00_cp_GenBank_RAW/*.gff \
+  | sed "s/Name=//g" \
+  | sed "s/ .*//g" \
+  | grep "accD\|atp\|ccsA\|cemA\|chlI\|clpP\|ftsH\|infA\|pafI\|pbf1\|pet\|psa\|psb30\|psb\|rbcL\|rnl\|rns\|rpl\|rpo\|rps\|rrn5\|tufA\|ycf" \
+  | sort -u \
+  > cp_gene_list.lst
+
+# extract CP fasta sequences
+while read GENE; do
+	for file in 00_cp_GenBank_RAW/*[0-9].fasta; do
+		grep $GENE $(basename $file .fasta).cds.gff > tmp.gff;
+		bedtools getfasta -fi $file -bed tmp.gff | tr ":" " ";
+	done > 01_cp_CDS/$GENE.fa;
+	rm tmp.gff;
+done < cp_gene_list.lst
+
+
+# get MT genes list
+cut -f 9 00_mt_GenBank_RAW/*.gff \
+  | sed "s/Name=//g" \
+  | sed "s/ .*//g" \
+  | sed "s/ATP/atp/g" \
+  | sed "s/NAD/nad/"  \
+  | grep "atp\|cob\|cox\|nad\|rpl\|rps" \
+  | sort -u \
+  > mt_gene_list.lst
+
+# extract MT fasta sequences
+while read GENE; do
+	for file in 00_mt_GenBank_RAW/*[0-9].fasta; do
+		grep $GENE $(basename $file .fasta).cds.gff > tmp.gff;
+		bedtools getfasta -fi $file -bed tmp.gff | tr ":" " ";
+	done > 01_mt_CDS/$GENE.fa;
+	rm tmp.gff;
+done < mt_gene_list.lst
+
+
+```
+
+
+We will use [faTrans](https://open.bioqueue.org/home/knowledge/showKnowledge/sig/ucsc-fatrans) to translate the nucleotidic sequences to the corresponding amino-acid sequences, [MAFFT](https://academic.oup.com/bib/article/20/4/1160/4106928) to align the amino-acid sequences for each gene, and finally [pal2nal](https://academic.oup.com/nar/article/34/suppl_2/W609/2505720) to translate the alignemts back at the nucleotidic level. We will do this both for the chloroplast and for the mitochondrial genes.
+
+
+```{bash}
+#| echo: TRUE
+#| eval: FALSE
+#| result: hid
+#| code-fold: TRUE
+#| message: FALSE
+#| warning: FALSE
+
+# translate CP to amino-acid sequences
+for file in 01_cp_CDS/*.fa; do
+  ~/bin/faTrans $file 02_cp_CDS_align/$(basename $file .fa).aa.fa;
+done
+# translate MT to amino-acid sequences
+for file in 01_mt_CDS/*.fa; do
+  ~/bin/faTrans $file 02_mt_CDS_align/$(basename $file .fa).aa.fa;
+done
+
+# align amino-acid sequences
+ls ./02_cp_CDS_align/ \
+  | xargs -n 4 -P 8 -I {} sh -c \
+  'mafft \
+     --localpair \
+     --maxiterate 1000 \
+     --ep 0.123 \
+     --thread 4 \
+     ./02_cp_CDS_align/{} \
+     > ./02_cp_CDS_align/$(basename {} .aa.fa).aa.aln.fa'
+     
+ls ./02_mt_CDS_align/ \
+  | xargs -n 4 -P 8 -I {} sh -c \
+  'mafft \
+     --localpair \
+     --maxiterate 1000 \
+     --ep 0.123 \
+     --thread 4 \
+     ./02_mt_CDS_align/{} \
+     > ./02_mt_CDS_align/$(basename {} .aa.fa).aa.aln.fa'
+
+# translate back the alignments to codons
+for file in ./02_cp_CDS_align/*.aa.aln.fa; do
+  perl ~/bin/pal2nal.v14/pal2nal.pl \
+    $file \
+    ./01_cp_CDS/$(basename $file .aa.aln.fa).fa \
+    -output fasta \
+    > ./02_cp_CDS_align/$(basename $file .aa.aln.fa).fa;
+done
+
+for file in ./02_mt_CDS_align/*.aa.aln.fa; do
+  perl ~/bin/pal2nal.v14/pal2nal.pl \
+    $file \
+    ./01_mt_CDS/$(basename $file .aa.aln.fa).fa \
+    -output fasta \
+    > ./02_mt_CDS_align/$(basename $file .aa.aln.fa).fa;
+done
+
+# clean up
+rm ./02_cp_CDS_align/*.aa.fa \
+  ./02_mt_CDS_align/*.aa.fa \
+  ./02_cp_CDS_align/*.aa.aln.fa \
+  ./02_mt_CDS_align/*.aa.aln.fa
+
+```
+
+
+Let's now fetch the length of the alignments in R.
+
+```{r}
+#| echo: TRUE
+#| eval: FALSE
+#| result: hide
+#| code-fold: TRUE
+#| message: FALSE
+#| warning: FALSE
+
+# create gene distribution matrix
+gene_length_distributions = matrix(ncol = 2)
+
+# get cp length distributions
+filenames = list.files(
+  "./02_cp_CDS_align/",
+  pattern = "*.aln.fa",
+  full.names = TRUE
+)
+cp_genes_length = lapply(filenames, n.readLines, n = 1, skip = 1)
+names(cp_genes_length) = stringr::str_remove_all(filenames, "./02_cp_CDS_align//") %>%
+  stringr::str_remove_all(".aln.fa")
+for(i in 1:length(cp_genes_length)){
+  gene_length_distributions = rbind(gene_length_distributions, c("cp", nchar(cp_genes_length[[i]][[1]])))
+  rownames(gene_length_distributions)[nrow(gene_length_distributions)] = names(cp_genes_length)[i]
+}
+
+# get mt length distributions
+filenames = list.files(
+  "./02_mt_CDS_align/",
+  pattern = "*.aln.fa",
+  full.names = TRUE
+)
+mt_genes_length = lapply(filenames, n.readLines, n = 1, skip = 1)
+names(mt_genes_length) = stringr::str_remove_all(filenames, "./02_mt_CDS_align//") %>%
+  stringr::str_remove_all(".aln.fa")
+for(i in 1:length(mt_genes_length)){
+  gene_length_distributions = rbind(gene_length_distributions, c("mt", nchar(mt_genes_length[[i]][[1]])))
+  rownames(gene_length_distributions)[nrow(gene_length_distributions)] = names(mt_genes_length)[i]
+}
+
+# reformat table
+gene_length_distributions = as.data.frame(gene_length_distributions)
+gene_length_distributions = gene_length_distributions[-1, ]
+names(gene_length_distributions) = c("Organell", "length (bp)")
+gene_length_distributions$`length (bp)` = as.numeric(gene_length_distributions$`length (bp)`)
+
+```
+
+
+
+
+```{r}
+#| echo: FALSE
+#| include: FALSE
+
+gene_length_distributions = utils::read.delim("./data/cp_mt_alignment_length_distributions.txt", header = TRUE)
+names(gene_length_distributions) = c("Organell", "length (bp)")
+gene_length_distributions$Organell = ifelse(
+  gene_length_distributions$Organell == "cp",
+  "Chloroplast", "Mitochondrion"
+)
+
+```
+
+
+And let's plot the gene alignment distributions for the chloroplast and the mitochondrion.
+
+
+```{r}
+#| echo: TRUE
+#| result: hide
+#| code-fold: TRUE
+#| message: FALSE
+#| warning: FALSE
+#| fig.height: 6
+#| fig.cap: "Figure 2: Alignment length distributions"
+
+# plot
+p2 = ggplot(gene_length_distributions, aes(x = Organell, y = `length (bp)`, fill = Organell)) +
+  geom_point(aes(group = Organell, color = Organell), shape = "|", size = 5) +
+  geom_boxplot(aes(fill = Organell), alpha = 0.75, width = 0.125,
+               position = position_nudge(x = -0.1),
+               outlier.colour = NA) +
+  ggdist::stat_halfeye(aes(fill = Organell), alpha = 0.75, slab_color = "grey45", slab_size = 0.5, 
+                       scale = 0.7, adjust = 1, justification = -0.05, .width = 0, point_colour = NA) +
+  scale_color_manual(values = c("#469d89", "steelblue")) +
+  scale_fill_manual(values = c("#469d89", "steelblue")) +
+  scale_y_continuous(labels = label_number(suffix = " kbp", scale = 1e-3)) +
+  coord_flip() +
+  labs(y = "Gene Length") +
+  theme(plot.title = element_text(size = 24, hjust = 0.5),
+        axis.ticks.y = element_blank(),
+        axis.title.x = element_text(size = 16),
+        axis.title.y = element_blank(),
+        axis.text.x = element_text(size = 14),
+        axis.text.y = element_text(size = 18),
+        legend.position = "none",
+        panel.background = element_blank(),
+        panel.grid.major = element_line(colour = "grey85"),
+        panel.grid.minor.x = element_line(colour = "grey85"),
+        panel.border = element_rect(colour = "black", fill = NA))
+plot(p2)
+
+
+```
+
+
+
+## Lessons Learnt {#sec-lesson-learnt-cp-and-mt-dataset-overview}
+So far, we have learnt:
+
+* TCGA is a public resource with a wide collection of samples from cancer biopsies from patients affected by 32 different cancer types.
+* TCGA provides abundant molecular and clinical information for both biopsies and patients and it allows for patient stratification and therapeutic target discovery.
+* Cancers with kidneys as primary sites are the third most abundant samples available in TCGA (n = 1,030 samples), after breast (n = 1,246) and lung biopsies (n = 1,156), and provides an excellent yet challenging case-study.
+
+
+
+
+## Session Information
+
+:::{.callout-note collapse=true}
+
+```{r, echo=FALSE}
+utils::sessionInfo()
+```
+
+:::

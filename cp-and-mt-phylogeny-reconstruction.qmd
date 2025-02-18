@@ -18,11 +18,79 @@ source("src/utils.R")
 
 ## On this page
 
-Biological insights and take-home messages are at the bottom of the page at Lesson Learnt: @sec-lesson-learnt-cp-and-mt-phylogeny.
+Biological insights and take-home messages are at the bottom of the page at Lesson Learnt: @sec-lesson-learnt-cp-and-mt-phylogeny-reconstruction.
 
-* Here we explore the data availability of The Cancer Genome Atlas public resource.
-* We explore the available clinical metadata for each cancer patient.
-* We explore the cohort demographic information.
+* Here we retrieve Ulva organellar genomes
+* we investigate the 
+
+
+## Reconstruction of Ulva species tree
+
+
+We will reconstruct the Ulva phylogenetic species tree using a Maximum Likelihood approach with [IQ-TREE](https://doi.org/10.1093/molbev/msaa015), and a coalescence-based one with [ASTRAL](https://doi.org/10.1186/s12859-018-2129-y). We will generate the species tree based on:
+
+* chloroplast only genes
+* mitochondrial only genes
+* both chloroplast and mitochondrial genes
+
+and we will evaluate the similarities and differences between the reconstructued phylogenies.
+
+
+### Maximum Likelihodd species tree reconstruction
+
+
+For the ML approach, the first step consist in concatenating all alignments into a single concatenated file.
+We will use [catfasta2phyml](https://github.com/nylander/catfasta2phyml), which also generates a nexus file that is required from IQ-TREE with the coordinates of each gene in the alignment. This allow us to partion the alignment to the gene level and apply different evolution models to different genes. Even if for each organelle all genes are inherited in linkage, the same is not true for the chloroplast and the mitochondrial genome. Moreover, this would allow to model different signals across genes that are under different evolutionary pressures.
+
+
+
+```{bash}
+#| echo: TRUE
+#| eval: FALSE
+#| result: hide
+#| code-fold: TRUE
+#| message: FALSE
+#| warning: FALSE
+
+# concatenate alignments
+perl ~/bin/catfasta2phyml.pl \
+  --fasta \
+  --concatenate 07_nt_aln_ready/*.fa \
+  > 08_concatenated_ML/clstr.all.concat.nt.align.fa
+
+# ML analysis on concatenated alignment
+~/bin/iqtree-1.6.8-Linux/bin/iqtree \
+  -s clstr.all.concat.nt.align.fa \
+  -st CODON \
+  -pre clstr.all.concat.nt.align \
+  -nt 52 \
+  -wbt \
+  -bb 1000 \
+  -alrt 1000 \
+  -m MG+F1X4
+
+```
+
+
+
+
+
+
+### Colescence-based species tree reconstruction
+
+For the coalescence-based approach, first we need to compute the single-gene ML tree.
+
+
+```{bash}
+#| echo: TRUE
+#| eval: FALSE
+#| result: hide
+#| code-fold: TRUE
+#| message: FALSE
+#| warning: FALSE
+
+
+```
 
 
 
@@ -31,94 +99,6 @@ Biological insights and take-home messages are at the bottom of the page at Less
 
 
 ```{bash, echo=FALSE, include=FALSE, eval=FALSE}
-
-# download RNAseq data
-1. To grep only cds in gff file
-awk '$3 == "CDS" {print $0}' KP720617.gff > KP720617_cdsonly.gff
-or grep and pipe the command
-grep "CDS" NC_053255.gff | bedtools getfasta -fi NC_053255.fasta -bed NC_053255.gff -fo results
-
-2. Loop to do this to all the files in the folder
-
-#why $basename() here?
-for file in *.fasta; do 
-	echo $file
-	BASENAME="${file%.*}"
-	grep "CDS" $BASENAME.gff | wc -l
-	grep "CDS" $BASENAME.gff > $BASENAME.cds.gff
-	bedtools getfasta -fi $file -bed $BASENAME.cds.gff -fo $BASENAME.cds.fasta; done
-
-
-#get sequence length > 200
-awk 'BEGIN{FS="[> ]"} /^>/{val=$2;next}  {print val,length($0)}'   Input_file
-out put:
-seq1 6
-seq2 7
-seq3 4
-
-awk 'BEGIN{FS="[> ]"} /^>/{val=$2;next}  {if (length($0) >200) {print val, length($0), "\n", $0}}' LC507117.cds.fasta
-
-
-
-######## MT GENOMES
-# select mt genes
-cut -f 9 *.gff | sed "s/Name=//g" | sed "s/ .*//g" |  sed "s/ATP/atp/g" | sed "s/NAD/nad/"  | grep "atp\|cob\|cox\|nad\|rpl\|rps" | sort -u > gene_list.lst
-
-# replace ATP with atp and NAD with nad
-for file in ./*; do  sed -i "s/ATP/atp/g" $file; sed -i "s/NAD/nad/" $file; done
-
-# get the gene-wise fasta sequences
-while read GENE; do
-	for file in *[0-9].fasta; do
-		grep $GENE $(basename $file .fasta).cds.gff > tmp.gff;
-		bedtools getfasta -fi $file -bed tmp.gff | tr ":" " ";
-	done > mt.$GENE.nt.fa;
-	rm tmp.gff;
-done < gene_list.lst
-	
-
-
-Feature (KU182748:61700-62486) beyond the length of KU182748 size (62022 bp).  Skipping.
-
-
-for file in mt.*.nt.fa; do ../faTrans $file $(basename $file .nt.fa).aa.fa; done
-
-grep "*" *.aa.fa
-
-add cox3 pr sequence KU182748
-nad5 >NC_053255
-
-
-######## CP GENOMES
-# select cp genes
-cut -f 9 *.gff | sed "s/Name=//g" | sed "s/ .*//g" | grep "accD\|atp\|ccsA\|cemA\|chlI\|clpP\|ftsH\|infA\|pafI\|pbf1\|pet\|psa\|psb30\|psb\|rbcL\|rnl\|rns\|rpl\|rpo\|rps\|rrn5\|tufA\|ycf" | sort -u > gene_list.lst
-
-# get the gene-wise fasta sequences
-while read GENE; do
-	for file in *[0-9].fasta; do
-		grep $GENE $(basename $file .fasta).cds.gff > tmp.gff;
-		bedtools getfasta -fi $file -bed tmp.gff | tr ":" " ";
-	done > cp.$GENE.nt.fa;
-	rm tmp.gff;
-done < gene_list.lst
-
-
-
-# get the gene-wise fasta sequences
-while read GENE; do for file in *[0-9].fasta; do grep $GENE $(basename $file .fasta).cds.gff > tmp.gff; bedtools getfasta -fi $file -bed tmp.gff | tr ":" " "; done > cp.$GENE.fa; rm tmp.gff; done < gene_list.lst
-
-		
-		
-for file in cp.*.nt.fa; do ../faTrans $file $(basename $file .nt.fa).aa.fa; done		
-		
-grep "*" *.aa.fa
-
-
-
-
-
-
-
 
 
 
@@ -294,6 +274,17 @@ merge cp with mt
 
 
 
+### ML phylogeny
+
+
+### coalescence based
+
+
+
+### distances between reconstructed species trees
+
+
+
 
 
 
@@ -302,34 +293,9 @@ merge cp with mt
 Of the 887 petients with kidney tumor, 659 were alive at the time of the last check up, while 228 died. It appears that KIRC patients (48.7% dead) have worse prognosis than KIRP patients (17.9% dead), as observed in the previous comparisons. However, before drawing a formal conclusion, we should validate this observation at least in another independent cohort.
 
 
-```{r}
-#| echo: FALSE
-#| warning: FALSE
-
-# prep table
-species_table = read.delim("data/species.txt")
-
-# print metadata table
-DT::datatable(
-  species_table,
-  extensions = c("FixedColumns", "FixedHeader"),
-  caption = "Table 1: Species used in the study", 
-  options = list(
-    scrollX = TRUE, paging = TRUE, fixedHeader = FALSE, pageLength = 10
-  )
-)
-
-```
 
 
 
-
-
-
-
-
-
-The gene matrix occupancy and gene length distribution across organellar genomes included in this study are presented in Fig. S2. Most selected genes are present/ nearly present in all studied sequences. In 29 selected genes for mitochondrial, there are two genes, rps3 and rps4 that are not presented in more than 10% of the 37 mt genomic sequences. For chloroplast, there are 10 out of 70 genes not presented in more than 10% of the 34 cp genomic sequences. The gene length distribution for cp and mt genes are …mean/median (range)…, respectively.
 Trees estimated by the ML and coalescent methods were well-supported and congruent, although slightly different topologies were recovered for different methods applied for different datasets (cp, mt and cp+mt) (Fig.1, Fig. S3). For the cp+mt tree, the topology of ML and coalescent trees are mostly congruent. The difference in the topology happens mostly within large species clades, e.g., clade contains U. australis or U. compressa genomes. The notorious difference is the position of U.fene vs. Ulva sp4. The results from the correlation between the common nodes and MAST% are highly concordant. They indicate that the topology of phylogenetic trees constructed by the two methods (ML and coalescence) and different datasets (cp, mt and cp+mt) is highly similar, except for the topology of the mt phylogenetic tree constructed by the ML method (The correlation between the common nodes) and the coalescent method (MAST%). Results from RF and KF matrices are more varied, but both also show the topology of species tree constructed using mt genomes ML is less similar compared to other species trees.
 
 
@@ -349,9 +315,22 @@ From the combination of 2 to 10 selected genes, 1,013 species trees were generat
 
 
 
-## Lessons Learnt {#sec-lesson-learnt-cp-and-mt-phylogeny}
+## Lessons Learnt {#sec-lesson-learnt-cp-and-mt-phylogeny-reconstruction}
 So far, we have learnt:
 
 * TCGA is a public resource with a wide collection of samples from cancer biopsies from patients affected by 32 different cancer types.
 * TCGA provides abundant molecular and clinical information for both biopsies and patients and it allows for patient stratification and therapeutic target discovery.
 * Cancers with kidneys as primary sites are the third most abundant samples available in TCGA (n = 1,030 samples), after breast (n = 1,246) and lung biopsies (n = 1,156), and provides an excellent yet challenging case-study.
+
+
+
+
+## Session Information
+
+:::{.callout-note collapse=true}
+
+```{r, echo=FALSE}
+utils::sessionInfo()
+```
+
+:::

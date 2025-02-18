@@ -4,7 +4,7 @@ project:
     
 
 book:
-    title: "Comparative analysis of Ulva Organellar Genomes and Development of markers for Species identification"
+    title: "Development of taxonomical biomarkers for Ulva genus"
     author: "Del Cortona Andrea, Tran T. Lan-Anh, Leliaert Frederik, De Clerck Olivier"
     version: 1.0.0
     date: "2025/02/10"
@@ -34,12 +34,14 @@ book:
 
     chapters:
       - index.qmd
-      - cp-and-mt-phylogeny.qmd
+      - cp-and-mt-dataset-overview.qmd
+      - cp-and-mt-phylogeny-reconstruction.qmd
       - markers-selection.qmd
 
 format:
     html:
         theme: cosmo
+        highlight-style: github
         fig-width: 10
         #cap-location: margin
         number-sections: true
@@ -47,6 +49,12 @@ format:
         toc: true
         toc-depth: 4
         #toc-expand: true
+        code:
+          height: 25px
+        code-block-bg: "#FAFAFA"
+        code-block-border-left: LightSlateGray
+        code-line-numbers: TRUE
+        code-overflow: scroll
         grid:
             body-width: 1000px
         include-in-header:
