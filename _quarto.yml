@@ -52,7 +52,7 @@ format:
         code:
           height: 25px
         code-block-bg: "#FAFAFA"
-        code-block-border-left: LightSlateGray
+        #code-block-border-left: LightSlateGray
         code-line-numbers: TRUE
         code-overflow: scroll
         grid:

@@ -1,6 +1,19 @@
 # Ulva organellar genomes retrieval and preparation
 
 
+```{css, echo=FALSE}
+
+pre {
+  max-height: 300px;
+}
+
+div.sourceCode {
+  overflow: scroll;
+}
+
+```
+
+
 ```{r, echo=FALSE, include=FALSE}
 # load required libraries
 up_packages = c("ape", "circlize", "ComplexHeatmap", "corrplot", "DECIPHER", "dendextend", "doSNOW", "dplyr",
@@ -70,7 +83,7 @@ The gene matrix occupancy and gene length distribution across organellar genomes
 ```{r}
 #| echo: TRUE
 #| result: hide
-#| code-fold: TRUE
+#| code-fold: FALSE
 #| message: FALSE
 #| warning: FALSE
 #| fig.height: 6
@@ -135,7 +148,7 @@ Next, we retrieved the CDS sequences and we align them. To do so, first we extra
 #| echo: TRUE
 #| eval: FALSE
 #| result: hide
-#| code-fold: TRUE
+#| code-fold: FALSE
 #| message: FALSE
 #| warning: FALSE
 
@@ -187,7 +200,7 @@ We will use [faTrans](https://open.bioqueue.org/home/knowledge/showKnowledge/sig
 #| echo: TRUE
 #| eval: FALSE
 #| result: hid
-#| code-fold: TRUE
+#| code-fold: FALSE
 #| message: FALSE
 #| warning: FALSE
 
@@ -253,7 +266,7 @@ Let's now fetch the length of the alignments in R.
 #| echo: TRUE
 #| eval: FALSE
 #| result: hide
-#| code-fold: TRUE
+#| code-fold: FALSE
 #| message: FALSE
 #| warning: FALSE
 
@@ -319,7 +332,7 @@ And let's plot the gene alignment distributions for the chloroplast and the mito
 ```{r}
 #| echo: TRUE
 #| result: hide
-#| code-fold: TRUE
+#| code-fold: FALSE
 #| message: FALSE
 #| warning: FALSE
 #| fig.height: 6

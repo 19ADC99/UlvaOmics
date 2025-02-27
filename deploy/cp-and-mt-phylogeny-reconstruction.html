@@ -20,6 +20,40 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
 }
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
 </style>
 
 
@@ -128,7 +162,7 @@ ul.task-list li input[type="checkbox"] {
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./cp-and-mt-dataset-overview.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">Species tree reconstruction from organellar genomes</span></span></a>
+ <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">Ulva organellar genomes retrieval and preparation</span></span></a>
   </div>
 </li>
         <li class="sidebar-item">
@@ -156,12 +190,14 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#on-this-page" id="toc-on-this-page" class="nav-link active" data-scroll-target="#on-this-page"><span class="header-section-number">2.1</span> On this page</a></li>
   <li><a href="#reconstruction-of-ulva-species-tree" id="toc-reconstruction-of-ulva-species-tree" class="nav-link" data-scroll-target="#reconstruction-of-ulva-species-tree"><span class="header-section-number">2.2</span> Reconstruction of Ulva species tree</a>
   <ul>
-  <li><a href="#ml-phylogeny" id="toc-ml-phylogeny" class="nav-link" data-scroll-target="#ml-phylogeny"><span class="header-section-number">2.2.1</span> ML phylogeny</a></li>
-  <li><a href="#coalescence-based" id="toc-coalescence-based" class="nav-link" data-scroll-target="#coalescence-based"><span class="header-section-number">2.2.2</span> coalescence based</a></li>
-  <li><a href="#distances-between-reconstructed-species-trees" id="toc-distances-between-reconstructed-species-trees" class="nav-link" data-scroll-target="#distances-between-reconstructed-species-trees"><span class="header-section-number">2.2.3</span> distances between reconstructed species trees</a></li>
-  <li><a href="#prognosis-outcome" id="toc-prognosis-outcome" class="nav-link" data-scroll-target="#prognosis-outcome"><span class="header-section-number">2.2.4</span> Prognosis Outcome</a></li>
+  <li><a href="#maximum-likelihodd-species-tree-reconstruction" id="toc-maximum-likelihodd-species-tree-reconstruction" class="nav-link" data-scroll-target="#maximum-likelihodd-species-tree-reconstruction"><span class="header-section-number">2.2.1</span> Maximum Likelihodd species tree reconstruction</a></li>
+  <li><a href="#colescence-based-species-tree-reconstruction" id="toc-colescence-based-species-tree-reconstruction" class="nav-link" data-scroll-target="#colescence-based-species-tree-reconstruction"><span class="header-section-number">2.2.2</span> Colescence-based species tree reconstruction</a></li>
+  <li><a href="#species-trees-comparison-and-reconciliation" id="toc-species-trees-comparison-and-reconciliation" class="nav-link" data-scroll-target="#species-trees-comparison-and-reconciliation"><span class="header-section-number">2.2.3</span> Species trees comparison and reconciliation</a></li>
+  <li><a href="#distances-between-reconstructed-species-trees" id="toc-distances-between-reconstructed-species-trees" class="nav-link" data-scroll-target="#distances-between-reconstructed-species-trees"><span class="header-section-number">2.2.4</span> distances between reconstructed species trees</a></li>
+  <li><a href="#prognosis-outcome" id="toc-prognosis-outcome" class="nav-link" data-scroll-target="#prognosis-outcome"><span class="header-section-number">2.2.5</span> Prognosis Outcome</a></li>
   </ul></li>
-  <li><a href="#sec-lesson-learnt-cp-and-mt-phylogeny" id="toc-sec-lesson-learnt-cp-and-mt-phylogeny" class="nav-link" data-scroll-target="#sec-lesson-learnt-cp-and-mt-phylogeny"><span class="header-section-number">2.3</span> Lessons Learnt</a></li>
+  <li><a href="#sec-lesson-learnt-cp-and-mt-phylogeny-reconstruction" id="toc-sec-lesson-learnt-cp-and-mt-phylogeny-reconstruction" class="nav-link" data-scroll-target="#sec-lesson-learnt-cp-and-mt-phylogeny-reconstruction"><span class="header-section-number">2.3</span> Lessons Learnt</a></li>
+  <li><a href="#session-information" id="toc-session-information" class="nav-link" data-scroll-target="#session-information"><span class="header-section-number">2.4</span> Session Information</a></li>
   </ul>
 </nav>
     </div>
@@ -187,28 +223,532 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 
+<div class="cell">
+<style type="text/css">
+
+pre {
+  max-height: 300px;
+}
+
+div.sourceCode {
+  overflow: scroll;
+}
+
+.bash-code {
+  font-style: italic;
+}
+
+</style>
+</div>
 <section id="on-this-page" class="level2" data-number="2.1">
 <h2 data-number="2.1" class="anchored" data-anchor-id="on-this-page"><span class="header-section-number">2.1</span> On this page</h2>
-<p>Biological insights and take-home messages are at the bottom of the page at Lesson Learnt: <a href="#sec-lesson-learnt-cp-and-mt-phylogeny" class="quarto-xref"><span>Section 2.3</span></a>.</p>
+<p>Biological insights and take-home messages are at the bottom of the page at Lesson Learnt: <a href="#sec-lesson-learnt-cp-and-mt-phylogeny-reconstruction" class="quarto-xref"><span>Section 2.3</span></a>.</p>
 <ul>
-<li>Here we explore the data availability of The Cancer Genome Atlas public resource.</li>
-<li>We explore the available clinical metadata for each cancer patient.</li>
-<li>We explore the cohort demographic information.</li>
+<li>Here we retrieve Ulva organellar genomes</li>
+<li>we investigate the</li>
 </ul>
 </section>
 <section id="reconstruction-of-ulva-species-tree" class="level2" data-number="2.2">
 <h2 data-number="2.2" class="anchored" data-anchor-id="reconstruction-of-ulva-species-tree"><span class="header-section-number">2.2</span> Reconstruction of Ulva species tree</h2>
-<section id="ml-phylogeny" class="level3" data-number="2.2.1">
-<h3 data-number="2.2.1" class="anchored" data-anchor-id="ml-phylogeny"><span class="header-section-number">2.2.1</span> ML phylogeny</h3>
+<p>We will reconstruct the Ulva phylogenetic species tree using a Maximum Likelihood approach with <a href="https://doi.org/10.1093/molbev/msaa015">IQ-TREE</a>, and a coalescence-based one with <a href="https://doi.org/10.1186/s12859-018-2129-y">ASTRAL</a>. We will generate the species tree based on:</p>
+<ul>
+<li>chloroplast only genes</li>
+<li>mitochondrial only genes</li>
+<li>both chloroplast and mitochondrial genes</li>
+</ul>
+<p>and we will evaluate the similarities and differences between the reconstructued phylogenies.</p>
+<section id="maximum-likelihodd-species-tree-reconstruction" class="level3" data-number="2.2.1">
+<h3 data-number="2.2.1" class="anchored" data-anchor-id="maximum-likelihodd-species-tree-reconstruction"><span class="header-section-number">2.2.1</span> Maximum Likelihodd species tree reconstruction</h3>
+<p>For the ML approach, the first step consist in concatenating all alignments into a single concatenated file. We will use <a href="https://github.com/nylander/catfasta2phyml">catfasta2phyml</a> to concatenate the nucleotidic sequences.</p>
+<p>We want to apply different which also generates a nexus file that is required from IQ-TREE with the coordinates of each gene in the alignment. This allow us to partion the alignment to the gene level and apply different evolution models to different genes. Even if for each organelle all genes are inherited in linkage, the same is not true for the chloroplast and the mitochondrial genome. Moreover, this would allow to model different signals across genes that are under different evolutionary pressures.</p>
+<p>SINGLE GENE TREE</p>
+<div class="cell" data-result="hide">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode numberSource bash bash-code number-lines code-with-copy"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1"></a><span class="co"># CP gene wise Maximum Likelihood phylogeny</span></span>
+<span id="cb1-2"><a href="#cb1-2"></a><span class="fu">mkdir</span> ./03_cp_singleGene_ML <span class="kw">&amp;&amp;</span> <span class="bu">cd</span> ./03_cp_singleGene_ML</span>
+<span id="cb1-3"><a href="#cb1-3"></a><span class="fu">ls</span> ../02_cp_CDS_align/<span class="pp">*</span>.fa <span class="dt">\</span></span>
+<span id="cb1-4"><a href="#cb1-4"></a>  <span class="kw">|</span> <span class="fu">xargs</span> <span class="at">-P</span> 8 <span class="at">-n</span> 6 <span class="at">-I</span> {} bash <span class="at">-c</span> <span class="dt">\</span></span>
+<span id="cb1-5"><a href="#cb1-5"></a>  ‘~/bin/iqtree-2.2.0-Linux/bin/iqtree2 <span class="at">-s</span> {} <span class="dt">\</span></span>
+<span id="cb1-6"><a href="#cb1-6"></a>    <span class="at">-st</span> DNA <span class="dt">\</span></span>
+<span id="cb1-7"><a href="#cb1-7"></a>    <span class="at">-pre</span> <span class="va">$(</span><span class="fu">basename</span> {} .fa<span class="va">)</span> </span>
+<span id="cb1-8"><a href="#cb1-8"></a>    <span class="ex">-nt</span> 6 <span class="dt">\</span></span>
+<span id="cb1-9"><a href="#cb1-9"></a>    <span class="at">-wbt</span> <span class="at">-bb</span> 1000 <span class="at">-alrt</span> 1000 <span class="dt">\</span></span>
+<span id="cb1-10"><a href="#cb1-10"></a>    <span class="at">-m</span> MFP+MERGE’</span>
+<span id="cb1-11"><a href="#cb1-11"></a></span>
+<span id="cb1-12"><a href="#cb1-12"></a><span class="co"># MT gene wise Maximum Likelihood phylogeny</span></span>
+<span id="cb1-13"><a href="#cb1-13"></a><span class="bu">cd</span> ..</span>
+<span id="cb1-14"><a href="#cb1-14"></a><span class="fu">mkdir</span> ./03_mt_singleGene_ML <span class="kw">&amp;&amp;</span> <span class="bu">cd</span> ./03_mt_singleGene_ML</span>
+<span id="cb1-15"><a href="#cb1-15"></a><span class="fu">ls</span> ../02_mt_CDS_align/<span class="pp">*</span>.fa <span class="dt">\</span></span>
+<span id="cb1-16"><a href="#cb1-16"></a>  <span class="kw">|</span> <span class="fu">xargs</span> <span class="at">-P</span> 8 <span class="at">-n</span> 6 <span class="at">-I</span> {} bash <span class="at">-c</span> <span class="dt">\</span></span>
+<span id="cb1-17"><a href="#cb1-17"></a>  ‘~/bin/iqtree-2.2.0-Linux/bin/iqtree2 <span class="at">-s</span> {} <span class="dt">\</span></span>
+<span id="cb1-18"><a href="#cb1-18"></a>    <span class="at">-st</span> DNA <span class="dt">\</span></span>
+<span id="cb1-19"><a href="#cb1-19"></a>    <span class="at">-pre</span> <span class="va">$(</span><span class="fu">basename</span> {} .fa<span class="va">)</span> </span>
+<span id="cb1-20"><a href="#cb1-20"></a>    <span class="ex">-nt</span> 6 <span class="dt">\</span></span>
+<span id="cb1-21"><a href="#cb1-21"></a>    <span class="at">-wbt</span> <span class="at">-bb</span> 1000 <span class="at">-alrt</span> 1000 <span class="dt">\</span></span>
+<span id="cb1-22"><a href="#cb1-22"></a>    <span class="at">-m</span> MFP+MERGE’</span>
+<span id="cb1-23"><a href="#cb1-23"></a><span class="bu">cd</span> ..</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Now we can create a nexus file with the best model predicted for each gene. This provides the best model for each partition (i.e.: gene) for the concatenated ML tree.</p>
+<div class="cell" data-result="hide">
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode numberSource bash bash-code number-lines code-with-copy"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1"></a><span class="co"># create nexus file with best models CP and MT </span></span>
+<span id="cb2-2"><a href="#cb2-2"></a><span class="cf">for</span> ORGANEL <span class="kw">in</span> cp mt<span class="kw">;</span> <span class="cf">do</span> </span>
+<span id="cb2-3"><a href="#cb2-3"></a></span>
+<span id="cb2-4"><a href="#cb2-4"></a>  <span class="va">k</span><span class="op">=</span>1</span>
+<span id="cb2-5"><a href="#cb2-5"></a>  <span class="va">START</span><span class="op">=</span>0</span>
+<span id="cb2-6"><a href="#cb2-6"></a>  </span>
+<span id="cb2-7"><a href="#cb2-7"></a>  <span class="bu">echo</span> <span class="st">"#nexus"</span> <span class="op">&gt;</span> ./04_<span class="st">"</span><span class="va">${ORGANEL}</span><span class="st">"</span>_concat_ML/head_noscaffold.nex</span>
+<span id="cb2-8"><a href="#cb2-8"></a>  <span class="bu">echo</span> <span class="st">"begin sets;"</span> <span class="op">&gt;&gt;</span> ./04_<span class="st">"</span><span class="va">${ORGANEL}</span><span class="st">"</span>_concat_ML/head_noscaffold.nex</span>
+<span id="cb2-9"><a href="#cb2-9"></a>  <span class="bu">echo</span> <span class="at">-n</span> <span class="st">"charpartition mine = "</span> <span class="op">&gt;&gt;</span> ./04_<span class="st">"</span><span class="va">${ORGANEL}</span><span class="st">"</span>_concat_ML/tail_noscaffold.nex</span>
+<span id="cb2-10"><a href="#cb2-10"></a>  </span>
+<span id="cb2-11"><a href="#cb2-11"></a>  <span class="cf">for</span> file <span class="kw">in</span> ./02_<span class="st">"</span><span class="va">${ORGANEL}</span><span class="st">"</span>_CDS_alin/<span class="pp">*</span>.fa<span class="kw">;</span> <span class="cf">do</span></span>
+<span id="cb2-12"><a href="#cb2-12"></a>    <span class="va">LEN</span><span class="op">=</span><span class="va">$(</span><span class="fu">awk</span> <span class="st">'/^&gt;/ {if (seqlen){print seqlen}; print ;seqlen=0;next; } { seqlen += length($0)}END{print seqlen}'</span> <span class="va">$file</span> <span class="kw">|</span> <span class="fu">sed</span> <span class="at">-n</span> 2,2p<span class="va">)</span></span>
+<span id="cb2-13"><a href="#cb2-13"></a>    <span class="bu">echo</span> <span class="st">"charset part</span><span class="va">$k</span><span class="st"> = </span><span class="va">$(($START</span><span class="op">+</span><span class="dv">1</span><span class="va">))</span><span class="st">-</span><span class="va">$(($START</span><span class="op">+</span><span class="va">$LEN))</span><span class="st">;"</span> <span class="op">&gt;&gt;</span> ./04_<span class="st">"</span><span class="va">${ORGANEL}</span><span class="st">"</span>_concat_ML/head_noscaffold.nex</span>
+<span id="cb2-14"><a href="#cb2-14"></a>    <span class="va">START</span><span class="op">=</span><span class="va">$(($START</span><span class="op">+</span><span class="va">$LEN))</span></span>
+<span id="cb2-15"><a href="#cb2-15"></a>    <span class="va">MODEL</span><span class="op">=</span><span class="va">$(</span><span class="fu">grep</span> <span class="st">"Best-fit model"</span> ./02_<span class="st">"</span><span class="va">${ORGANEL}</span><span class="st">"</span>_CDS_alin/<span class="va">$(</span><span class="fu">basename</span> <span class="va">$file</span> .fa<span class="va">)</span>.log <span class="dt">\</span></span>
+<span id="cb2-16"><a href="#cb2-16"></a>      <span class="kw">|</span> <span class="fu">sed</span> <span class="st">'s/Best-fit model: //g'</span> <span class="dt">\</span></span>
+<span id="cb2-17"><a href="#cb2-17"></a>      <span class="kw">|</span> <span class="fu">sed</span> <span class="st">'s/ chosen according to BIC//g'</span><span class="va">)</span></span>
+<span id="cb2-18"><a href="#cb2-18"></a>    <span class="bu">echo</span> <span class="at">-n</span> <span class="st">"</span><span class="va">$MODEL</span><span class="st">:part</span><span class="va">$k</span><span class="st"> ,"</span> <span class="op">&gt;&gt;</span> ./04_<span class="st">"</span><span class="va">${ORGANEL}</span><span class="st">"</span>_concat_ML/tail_noscaffold.nex</span>
+<span id="cb2-19"><a href="#cb2-19"></a>    <span class="va">k</span><span class="op">=</span><span class="va">$((k</span><span class="op">+</span><span class="dv">1</span><span class="va">))</span></span>
+<span id="cb2-20"><a href="#cb2-20"></a>  <span class="cf">done</span></span>
+<span id="cb2-21"><a href="#cb2-21"></a>  </span>
+<span id="cb2-22"><a href="#cb2-22"></a>  <span class="bu">echo</span> <span class="st">";"</span> <span class="op">&gt;&gt;</span> ./04_<span class="st">"</span><span class="va">${ORGANEL}</span><span class="st">"</span>_concat_ML/tail_noscaffold.nex</span>
+<span id="cb2-23"><a href="#cb2-23"></a>  <span class="bu">echo</span> <span class="st">"end;"</span> <span class="op">&gt;&gt;</span> ./04_<span class="st">"</span><span class="va">${ORGANEL}</span><span class="st">"</span>_concat_ML/tail_noscaffold.nex</span>
+<span id="cb2-24"><a href="#cb2-24"></a>  </span>
+<span id="cb2-25"><a href="#cb2-25"></a>  <span class="fu">cat</span> ./04_<span class="st">"</span><span class="va">${ORGANEL}</span><span class="st">"</span>_concat_ML/head_noscaffold.nex <span class="dt">\</span></span>
+<span id="cb2-26"><a href="#cb2-26"></a>    ./04_<span class="st">"</span><span class="va">${ORGANEL}</span><span class="st">"</span>_concat_ML/tail_noscaffold.nex <span class="dt">\</span></span>
+<span id="cb2-27"><a href="#cb2-27"></a>    <span class="op">&gt;</span> ./04_<span class="st">"</span><span class="va">${ORGANEL}</span><span class="st">"</span>_concat_ML/<span class="st">"</span><span class="va">${ORGANEL}</span><span class="st">"</span>_allgenes_concat.nex</span>
+<span id="cb2-28"><a href="#cb2-28"></a>    </span>
+<span id="cb2-29"><a href="#cb2-29"></a>  <span class="fu">rm</span> ./04_<span class="st">"</span><span class="va">${ORGANEL}</span><span class="st">"</span>_concat_ML/head_noscaffold.nex ./04_<span class="st">"</span><span class="va">${ORGANEL}</span><span class="st">"</span>_concat_ML/tail_noscaffold.nex</span>
+<span id="cb2-30"><a href="#cb2-30"></a>  <span class="fu">sed</span> <span class="at">-i</span> <span class="st">'s/ ,;/;/g'</span> ./04_<span class="st">"</span><span class="va">${ORGANEL}</span><span class="st">"</span>_concat_ML/<span class="st">"</span><span class="va">${ORGANEL}</span><span class="st">"</span>_allgenes_concat.nex</span>
+<span id="cb2-31"><a href="#cb2-31"></a></span>
+<span id="cb2-32"><a href="#cb2-32"></a><span class="cf">done</span></span>
+<span id="cb2-33"><a href="#cb2-33"></a></span>
+<span id="cb2-34"><a href="#cb2-34"></a><span class="co"># create a nexus file for CP+MT concatenated alignment</span></span>
+<span id="cb2-35"><a href="#cb2-35"></a><span class="va">k</span><span class="op">=</span>1</span>
+<span id="cb2-36"><a href="#cb2-36"></a><span class="va">START</span><span class="op">=</span>0</span>
+<span id="cb2-37"><a href="#cb2-37"></a></span>
+<span id="cb2-38"><a href="#cb2-38"></a><span class="bu">echo</span> <span class="st">"#nexus"</span> <span class="op">&gt;</span> ./06_cp_mt_concat_ML/head_noscaffold.nex</span>
+<span id="cb2-39"><a href="#cb2-39"></a><span class="bu">echo</span> <span class="st">"begin sets;"</span> <span class="op">&gt;&gt;</span> ./06_cp_mt_concat_ML/head_noscaffold.nex</span>
+<span id="cb2-40"><a href="#cb2-40"></a><span class="bu">echo</span> <span class="at">-n</span> <span class="st">"charpartition mine = "</span> <span class="op">&gt;&gt;</span> ./06_cp_mt_concat_ML/tail_noscaffold.nex</span>
+<span id="cb2-41"><a href="#cb2-41"></a></span>
+<span id="cb2-42"><a href="#cb2-42"></a><span class="cf">for</span> file <span class="kw">in</span> ./02_cp_CDS_alin/<span class="pp">*</span>.fa ./02_mt_CDS_alin/<span class="pp">*</span>.fa<span class="kw">;</span> <span class="cf">do</span></span>
+<span id="cb2-43"><a href="#cb2-43"></a>  <span class="va">LEN</span><span class="op">=</span><span class="va">$(</span><span class="fu">awk</span> <span class="st">'/^&gt;/ {if (seqlen){print seqlen}; print ;seqlen=0;next; } { seqlen += length($0)}END{print seqlen}'</span> <span class="va">$file</span> <span class="kw">|</span> <span class="fu">sed</span> <span class="at">-n</span> 2,2p<span class="va">)</span></span>
+<span id="cb2-44"><a href="#cb2-44"></a>  <span class="bu">echo</span> <span class="st">"charset part</span><span class="va">$k</span><span class="st"> = </span><span class="va">$(($START</span><span class="op">+</span><span class="dv">1</span><span class="va">))</span><span class="st">-</span><span class="va">$(($START</span><span class="op">+</span><span class="va">$LEN))</span><span class="st">;"</span> <span class="op">&gt;&gt;</span> ./06_cp_mt_concat_ML/head_noscaffold.nex</span>
+<span id="cb2-45"><a href="#cb2-45"></a>  <span class="va">START</span><span class="op">=</span><span class="va">$(($START</span><span class="op">+</span><span class="va">$LEN))</span></span>
+<span id="cb2-46"><a href="#cb2-46"></a>  <span class="va">MODEL</span><span class="op">=</span><span class="va">$(</span><span class="fu">grep</span> <span class="st">"Best-fit model"</span> ./02_<span class="pp">*</span>_CDS_alin/<span class="va">$(</span><span class="fu">basename</span> <span class="va">$file</span> .fa<span class="va">)</span>.log <span class="dt">\</span></span>
+<span id="cb2-47"><a href="#cb2-47"></a>    <span class="kw">|</span> <span class="fu">sed</span> <span class="st">'s/Best-fit model: //g'</span> <span class="dt">\</span></span>
+<span id="cb2-48"><a href="#cb2-48"></a>    <span class="kw">|</span> <span class="fu">sed</span> <span class="st">'s/ chosen according to BIC//g'</span><span class="va">)</span></span>
+<span id="cb2-49"><a href="#cb2-49"></a>  <span class="bu">echo</span> <span class="at">-n</span> <span class="st">"</span><span class="va">$MODEL</span><span class="st">:part</span><span class="va">$k</span><span class="st"> ,"</span> <span class="op">&gt;&gt;</span> ./06_cp_mt_concat_ML/tail_noscaffold.nex</span>
+<span id="cb2-50"><a href="#cb2-50"></a>  <span class="va">k</span><span class="op">=</span><span class="va">$((k</span><span class="op">+</span><span class="dv">1</span><span class="va">))</span></span>
+<span id="cb2-51"><a href="#cb2-51"></a><span class="cf">done</span></span>
+<span id="cb2-52"><a href="#cb2-52"></a></span>
+<span id="cb2-53"><a href="#cb2-53"></a><span class="bu">echo</span> <span class="st">";"</span> <span class="op">&gt;&gt;</span> ./06_cp_mt_concat_ML/tail_noscaffold.nex</span>
+<span id="cb2-54"><a href="#cb2-54"></a><span class="bu">echo</span> <span class="st">"end;"</span> <span class="op">&gt;&gt;</span> ./06_cp_mt_concat_ML/tail_noscaffold.nex</span>
+<span id="cb2-55"><a href="#cb2-55"></a></span>
+<span id="cb2-56"><a href="#cb2-56"></a><span class="fu">cat</span> ./06_cp_mt_concat_ML/head_noscaffold.nex <span class="dt">\</span></span>
+<span id="cb2-57"><a href="#cb2-57"></a>  ./06_cp_mt_concat_ML/tail_noscaffold.nex <span class="dt">\</span></span>
+<span id="cb2-58"><a href="#cb2-58"></a>  <span class="op">&gt;</span> ./06_cp_mt_concat_ML/cp_mt_allgenes_concat.nex</span>
+<span id="cb2-59"><a href="#cb2-59"></a>  </span>
+<span id="cb2-60"><a href="#cb2-60"></a><span class="fu">rm</span> ./06_cp_mt_concat_ML/head_noscaffold.nex ./06_cp_mt_concat_ML/tail_noscaffold.nex</span>
+<span id="cb2-61"><a href="#cb2-61"></a><span class="fu">sed</span> <span class="at">-i</span> <span class="st">'s/ ,;/;/g'</span> ./06_cp_mt_concat_ML/cp_mt_allgenes_concat.nex</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>We will use <a href="https://github.com/nylander/catfasta2phyml">catfasta2phyml</a> to concatenate the nucleotidic sequences.</p>
+<div class="cell" data-result="hide">
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode numberSource bash bash-code number-lines code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1"></a><span class="co"># concatenate CP alignments</span></span>
+<span id="cb3-2"><a href="#cb3-2"></a><span class="fu">perl</span> ~/bin/catfasta2phyml.pl <span class="dt">\</span></span>
+<span id="cb3-3"><a href="#cb3-3"></a>  <span class="at">--fasta</span> <span class="dt">\</span></span>
+<span id="cb3-4"><a href="#cb3-4"></a>  <span class="at">--concatenate</span> 02_cp_CDS_align/<span class="pp">*</span>.fa <span class="dt">\</span></span>
+<span id="cb3-5"><a href="#cb3-5"></a>  <span class="op">&gt;</span> 08_concatenated_ML/clstr.all.concat.nt.align.fa</span>
+<span id="cb3-6"><a href="#cb3-6"></a>  </span>
+<span id="cb3-7"><a href="#cb3-7"></a><span class="co"># concatenate MT alignments</span></span>
+<span id="cb3-8"><a href="#cb3-8"></a><span class="fu">perl</span> ~/bin/catfasta2phyml.pl <span class="dt">\</span></span>
+<span id="cb3-9"><a href="#cb3-9"></a>  <span class="at">--fasta</span> <span class="dt">\</span></span>
+<span id="cb3-10"><a href="#cb3-10"></a>  <span class="at">--concatenate</span> 02_mt_CDS_align/<span class="pp">*</span>.fa <span class="dt">\</span></span>
+<span id="cb3-11"><a href="#cb3-11"></a>  <span class="op">&gt;</span> 08_concatenated_ML/clstr.all.concat.nt.align.fa</span>
+<span id="cb3-12"><a href="#cb3-12"></a></span>
+<span id="cb3-13"><a href="#cb3-13"></a><span class="co"># concatenate CP+MT alignments</span></span>
+<span id="cb3-14"><a href="#cb3-14"></a><span class="fu">perl</span> ~/bin/catfasta2phyml.pl <span class="dt">\</span></span>
+<span id="cb3-15"><a href="#cb3-15"></a>  <span class="at">--fasta</span> <span class="dt">\</span></span>
+<span id="cb3-16"><a href="#cb3-16"></a>  <span class="at">--concatenate</span> 07_nt_aln_ready/<span class="pp">*</span>.fa <span class="dt">\</span></span>
+<span id="cb3-17"><a href="#cb3-17"></a>  <span class="op">&gt;</span> 06_cp_mt_concat_ML/clstr.all.concat.nt.align.fa</span>
+<span id="cb3-18"><a href="#cb3-18"></a></span>
+<span id="cb3-19"><a href="#cb3-19"></a><span class="co"># ML analysis on concatenated alignment</span></span>
+<span id="cb3-20"><a href="#cb3-20"></a><span class="bu">cd</span> ./04_cp_concat_ML/</span>
+<span id="cb3-21"><a href="#cb3-21"></a><span class="ex">~/bin/iqtree-2.2.0-Linux/bin/iqtree2</span> <span class="dt">\</span></span>
+<span id="cb3-22"><a href="#cb3-22"></a>  <span class="at">-s</span> cp_allgenes_concat.fa <span class="dt">\</span></span>
+<span id="cb3-23"><a href="#cb3-23"></a>  <span class="at">-st</span> DNA <span class="dt">\</span></span>
+<span id="cb3-24"><a href="#cb3-24"></a>  <span class="at">-pre</span> cp_allgenes_concat <span class="dt">\</span></span>
+<span id="cb3-25"><a href="#cb3-25"></a>  <span class="at">-p</span> cp_allgenes_concat.nex <span class="dt">\</span></span>
+<span id="cb3-26"><a href="#cb3-26"></a>  <span class="at">--sampling</span> GENESITE <span class="dt">\</span></span>
+<span id="cb3-27"><a href="#cb3-27"></a>  <span class="at">-nt</span> 64 <span class="dt">\</span></span>
+<span id="cb3-28"><a href="#cb3-28"></a>  <span class="at">-wbt</span> <span class="at">-bb</span> 1000 <span class="at">-alrt</span> 1000 </span>
+<span id="cb3-29"><a href="#cb3-29"></a></span>
+<span id="cb3-30"><a href="#cb3-30"></a><span class="bu">cd</span> ../04_mt_concat_ML/</span>
+<span id="cb3-31"><a href="#cb3-31"></a><span class="ex">~/bin/iqtree-2.2.0-Linux/bin/iqtree2</span> <span class="dt">\</span></span>
+<span id="cb3-32"><a href="#cb3-32"></a>  <span class="at">-s</span> mt_allgenes_concat.fa <span class="dt">\</span></span>
+<span id="cb3-33"><a href="#cb3-33"></a>  <span class="at">-st</span> DNA <span class="dt">\</span></span>
+<span id="cb3-34"><a href="#cb3-34"></a>  <span class="at">-pre</span> mt_allgenes_concat <span class="dt">\</span></span>
+<span id="cb3-35"><a href="#cb3-35"></a>  <span class="at">-p</span> mt_allgenes_concat.nex <span class="dt">\</span></span>
+<span id="cb3-36"><a href="#cb3-36"></a>  <span class="at">--sampling</span> GENESITE <span class="dt">\</span></span>
+<span id="cb3-37"><a href="#cb3-37"></a>  <span class="at">-nt</span> 64 <span class="dt">\</span></span>
+<span id="cb3-38"><a href="#cb3-38"></a>  <span class="at">-wbt</span> <span class="at">-bb</span> 1000 <span class="at">-alrt</span> 1000 </span>
+<span id="cb3-39"><a href="#cb3-39"></a></span>
+<span id="cb3-40"><a href="#cb3-40"></a><span class="bu">cd</span> ../06_cp_mt_concat_ML/</span>
+<span id="cb3-41"><a href="#cb3-41"></a><span class="ex">~/bin/iqtree-2.2.0-Linux/bin/iqtree2</span> <span class="dt">\</span></span>
+<span id="cb3-42"><a href="#cb3-42"></a>  <span class="at">-s</span> cp_mt_allgenes_concat.fa <span class="dt">\</span></span>
+<span id="cb3-43"><a href="#cb3-43"></a>  <span class="at">-st</span> DNA <span class="dt">\</span></span>
+<span id="cb3-44"><a href="#cb3-44"></a>  <span class="at">-pre</span> cp_mt_allgenes_concat <span class="dt">\</span></span>
+<span id="cb3-45"><a href="#cb3-45"></a>  <span class="at">-p</span> cp_mt_allgenes_concat.nex <span class="dt">\</span></span>
+<span id="cb3-46"><a href="#cb3-46"></a>  <span class="at">--sampling</span> GENESITE <span class="dt">\</span></span>
+<span id="cb3-47"><a href="#cb3-47"></a>  <span class="at">-nt</span> 64 <span class="dt">\</span></span>
+<span id="cb3-48"><a href="#cb3-48"></a>  <span class="at">-wbt</span> <span class="at">-bb</span> 1000 <span class="at">-alrt</span> 1000 </span>
+<span id="cb3-49"><a href="#cb3-49"></a>  </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
 </section>
-<section id="coalescence-based" class="level3" data-number="2.2.2">
-<h3 data-number="2.2.2" class="anchored" data-anchor-id="coalescence-based"><span class="header-section-number">2.2.2</span> coalescence based</h3>
+<section id="colescence-based-species-tree-reconstruction" class="level3" data-number="2.2.2">
+<h3 data-number="2.2.2" class="anchored" data-anchor-id="colescence-based-species-tree-reconstruction"><span class="header-section-number">2.2.2</span> Colescence-based species tree reconstruction</h3>
+<p>For the coalescence-based approach, first we need to compute the single-gene ML tree.</p>
+<div class="cell" data-result="hide">
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode numberSource bash number-lines code-with-copy"><code class="sourceCode bash"></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
 </section>
-<section id="distances-between-reconstructed-species-trees" class="level3" data-number="2.2.3">
-<h3 data-number="2.2.3" class="anchored" data-anchor-id="distances-between-reconstructed-species-trees"><span class="header-section-number">2.2.3</span> distances between reconstructed species trees</h3>
+<section id="species-trees-comparison-and-reconciliation" class="level3" data-number="2.2.3">
+<h3 data-number="2.2.3" class="anchored" data-anchor-id="species-trees-comparison-and-reconciliation"><span class="header-section-number">2.2.3</span> Species trees comparison and reconciliation</h3>
+<p>Let’s plot the Maximum Likelihood trees we have just reconstructed!</p>
+<p>First we import the trees in R.</p>
+<div class="cell" data-result="hide">
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode numberSource r number-lines code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1"></a><span class="co"># phylogenetic trees placeholder</span></span>
+<span id="cb5-2"><a href="#cb5-2"></a>phylogenetic_trees <span class="ot">=</span> <span class="fu">list</span>(</span>
+<span id="cb5-3"><a href="#cb5-3"></a>  <span class="st">"cp_ML"</span> <span class="ot">=</span> <span class="fu">list</span>(<span class="st">"type"</span> <span class="ot">=</span> <span class="st">"ML"</span>, <span class="st">"tree"</span> <span class="ot">=</span> <span class="cn">NA</span>, <span class="st">"root"</span> <span class="ot">=</span> <span class="cn">NA</span>, <span class="st">"dendro"</span> <span class="ot">=</span> <span class="cn">NA</span>),</span>
+<span id="cb5-4"><a href="#cb5-4"></a>  <span class="st">"cp_ASTRAL"</span> <span class="ot">=</span> <span class="fu">list</span>(<span class="st">"type"</span> <span class="ot">=</span> <span class="st">"coalescent"</span>, <span class="st">"tree"</span> <span class="ot">=</span> <span class="cn">NA</span>, <span class="st">"root"</span> <span class="ot">=</span> <span class="cn">NA</span>, <span class="st">"dendro"</span> <span class="ot">=</span> <span class="cn">NA</span>),</span>
+<span id="cb5-5"><a href="#cb5-5"></a>  <span class="st">"mt_ML"</span> <span class="ot">=</span> <span class="fu">list</span>(<span class="st">"type"</span> <span class="ot">=</span> <span class="st">"ML"</span>, <span class="st">"tree"</span> <span class="ot">=</span> <span class="cn">NA</span>, <span class="st">"root"</span> <span class="ot">=</span> <span class="cn">NA</span>, <span class="st">"dendro"</span> <span class="ot">=</span> <span class="cn">NA</span>),</span>
+<span id="cb5-6"><a href="#cb5-6"></a>  <span class="st">"mt_ASTRAL"</span> <span class="ot">=</span> <span class="fu">list</span>(<span class="st">"type"</span> <span class="ot">=</span> <span class="st">"coalescent"</span>, <span class="st">"tree"</span> <span class="ot">=</span> <span class="cn">NA</span>, <span class="st">"root"</span> <span class="ot">=</span> <span class="cn">NA</span>, <span class="st">"dendro"</span> <span class="ot">=</span> <span class="cn">NA</span>),</span>
+<span id="cb5-7"><a href="#cb5-7"></a>  <span class="st">"cp_mt_ML"</span> <span class="ot">=</span> <span class="fu">list</span>(<span class="st">"type"</span> <span class="ot">=</span> <span class="st">"ML"</span>, <span class="st">"tree"</span> <span class="ot">=</span> <span class="cn">NA</span>, <span class="st">"root"</span> <span class="ot">=</span> <span class="cn">NA</span>, <span class="st">"dendro"</span> <span class="ot">=</span> <span class="cn">NA</span>),</span>
+<span id="cb5-8"><a href="#cb5-8"></a>  <span class="st">"cp_mt_ASTRAL"</span> <span class="ot">=</span> <span class="fu">list</span>(<span class="st">"type"</span> <span class="ot">=</span> <span class="st">"coalescent"</span>, <span class="st">"tree"</span> <span class="ot">=</span> <span class="cn">NA</span>, <span class="st">"root"</span> <span class="ot">=</span> <span class="cn">NA</span>, <span class="st">"dendro"</span> <span class="ot">=</span> <span class="cn">NA</span>)</span>
+<span id="cb5-9"><a href="#cb5-9"></a>)</span>
+<span id="cb5-10"><a href="#cb5-10"></a></span>
+<span id="cb5-11"><a href="#cb5-11"></a><span class="co"># read ML concatenated trees</span></span>
+<span id="cb5-12"><a href="#cb5-12"></a>phylogenetic_trees[[<span class="st">"cp_ML"</span>]][[<span class="st">"tree"</span>]] <span class="ot">=</span> ape<span class="sc">::</span><span class="fu">read.tree</span>(<span class="at">file =</span> <span class="st">"./data/cp_allgenes_concat.contree"</span>)</span>
+<span id="cb5-13"><a href="#cb5-13"></a>phylogenetic_trees[[<span class="st">"mt_ML"</span>]][[<span class="st">"tree"</span>]] <span class="ot">=</span> ape<span class="sc">::</span><span class="fu">read.tree</span>(<span class="at">file =</span> <span class="st">"./data/mt_allgenes_concat.contree"</span>)</span>
+<span id="cb5-14"><a href="#cb5-14"></a>phylogenetic_trees[[<span class="st">"cp_mt_ML"</span>]][[<span class="st">"tree"</span>]] <span class="ot">=</span> ape<span class="sc">::</span><span class="fu">read.tree</span>(<span class="at">file =</span> <span class="st">"./data/cp_mt_allgenes_concat.contree"</span>)</span>
+<span id="cb5-15"><a href="#cb5-15"></a></span>
+<span id="cb5-16"><a href="#cb5-16"></a><span class="co"># read coalescence-based trees</span></span>
+<span id="cb5-17"><a href="#cb5-17"></a>phylogenetic_trees[[<span class="st">"cp_ASTRAL"</span>]][[<span class="st">"tree"</span>]] <span class="ot">=</span> ape<span class="sc">::</span><span class="fu">read.tree</span>(<span class="at">file =</span> <span class="st">"./data/cp_genetrees.coalescence.tre"</span>)</span>
+<span id="cb5-18"><a href="#cb5-18"></a>phylogenetic_trees[[<span class="st">"mt_ASTRAL"</span>]][[<span class="st">"tree"</span>]] <span class="ot">=</span> ape<span class="sc">::</span><span class="fu">read.tree</span>(<span class="at">file =</span> <span class="st">"./data/mt_genetrees.coalescence.tre"</span>)</span>
+<span id="cb5-19"><a href="#cb5-19"></a>phylogenetic_trees[[<span class="st">"cp_mt_ASTRAL"</span>]][[<span class="st">"tree"</span>]] <span class="ot">=</span> ape<span class="sc">::</span><span class="fu">read.tree</span>(<span class="at">file =</span> <span class="st">"./data/cp_mt_genetrees.coalescence.tre"</span>)</span>
+<span id="cb5-20"><a href="#cb5-20"></a></span>
+<span id="cb5-21"><a href="#cb5-21"></a><span class="co"># reroot trees</span></span>
+<span id="cb5-22"><a href="#cb5-22"></a><span class="cf">for</span>(i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">length</span>(phylogenetic_trees)){</span>
+<span id="cb5-23"><a href="#cb5-23"></a>  </span>
+<span id="cb5-24"><a href="#cb5-24"></a>  <span class="co"># get root position</span></span>
+<span id="cb5-25"><a href="#cb5-25"></a>  phylogenetic_trees[[i]][[<span class="st">"root"</span>]] <span class="ot">=</span> tidytree<span class="sc">::</span><span class="fu">MRCA</span>(phylogenetic_trees[[i]][[<span class="st">"tree"</span>]], <span class="st">"Pakin"</span>, <span class="st">"Oviri"</span>)</span>
+<span id="cb5-26"><a href="#cb5-26"></a>  </span>
+<span id="cb5-27"><a href="#cb5-27"></a>  <span class="co"># reroot set branch length NaN to 0 in coalescent trees and root length to 0.01 in ML trees</span></span>
+<span id="cb5-28"><a href="#cb5-28"></a>  <span class="cf">if</span>(phylogenetic_trees[[i]][[<span class="st">"type"</span>]] <span class="sc">==</span> <span class="st">"coalescent"</span>){</span>
+<span id="cb5-29"><a href="#cb5-29"></a>    phylogenetic_trees[[i]][[<span class="st">"tree"</span>]] <span class="ot">=</span> treeio<span class="sc">::</span><span class="fu">root</span>(phylogenetic_trees[[i]][[<span class="st">"tree"</span>]], <span class="at">node =</span> phylogenetic_trees[[i]][[<span class="st">"root"</span>]], <span class="at">resolve.root =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb5-30"><a href="#cb5-30"></a>    phylogenetic_trees[[i]][[<span class="st">"tree"</span>]]<span class="sc">$</span>edge.length[<span class="fu">is.na</span>(phylogenetic_trees[[i]][[<span class="st">"tree"</span>]]<span class="sc">$</span>edge.length)] <span class="ot">=</span> <span class="dv">0</span></span>
+<span id="cb5-31"><a href="#cb5-31"></a>    phylogenetic_trees[[i]][[<span class="st">"tree"</span>]]<span class="sc">$</span>node.label <span class="ot">=</span> <span class="fu">ifelse</span>(phylogenetic_trees[[i]][[<span class="st">"tree"</span>]]<span class="sc">$</span>node.label <span class="sc">==</span> <span class="st">"Root"</span>, <span class="st">"1"</span>, phylogenetic_trees[[i]][[<span class="st">"tree"</span>]]<span class="sc">$</span>node.label)</span>
+<span id="cb5-32"><a href="#cb5-32"></a>    phylogenetic_trees[[i]][[<span class="st">"tree"</span>]]<span class="sc">$</span>node.label <span class="ot">=</span> <span class="fu">ifelse</span>(phylogenetic_trees[[i]][[<span class="st">"tree"</span>]]<span class="sc">$</span>node.label <span class="sc">==</span> <span class="st">""</span>, <span class="st">"1"</span>, phylogenetic_trees[[i]][[<span class="st">"tree"</span>]]<span class="sc">$</span>node.label)</span>
+<span id="cb5-33"><a href="#cb5-33"></a>  } <span class="cf">else</span> {</span>
+<span id="cb5-34"><a href="#cb5-34"></a>    phylogenetic_trees[[i]][[<span class="st">"tree"</span>]] <span class="ot">=</span> treeio<span class="sc">::</span><span class="fu">root</span>(phylogenetic_trees[[i]][[<span class="st">"tree"</span>]], <span class="at">node =</span> phylogenetic_trees[[i]][[<span class="st">"root"</span>]] <span class="sc">+</span> <span class="dv">1</span>, <span class="at">resolve.root =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb5-35"><a href="#cb5-35"></a>    phylogenetic_trees[[i]][[<span class="st">"tree"</span>]]<span class="sc">$</span>edge.length[<span class="fu">which</span>(phylogenetic_trees[[i]][[<span class="st">"tree"</span>]]<span class="sc">$</span>edge.length <span class="sc">==</span> <span class="dv">0</span>)] <span class="ot">=</span> <span class="fl">0.1</span></span>
+<span id="cb5-36"><a href="#cb5-36"></a>    phylogenetic_trees[[i]][[<span class="st">"tree"</span>]]<span class="sc">$</span>node.label <span class="ot">=</span> <span class="fu">ifelse</span>(phylogenetic_trees[[i]][[<span class="st">"tree"</span>]]<span class="sc">$</span>node.label <span class="sc">==</span> <span class="st">"Root"</span>, <span class="st">"100"</span>, phylogenetic_trees[[i]][[<span class="st">"tree"</span>]]<span class="sc">$</span>node.label)</span>
+<span id="cb5-37"><a href="#cb5-37"></a>    phylogenetic_trees[[i]][[<span class="st">"tree"</span>]]<span class="sc">$</span>node.label <span class="ot">=</span> <span class="fu">ifelse</span>(phylogenetic_trees[[i]][[<span class="st">"tree"</span>]]<span class="sc">$</span>node.label <span class="sc">==</span> <span class="st">""</span>, <span class="st">"100"</span>, phylogenetic_trees[[i]][[<span class="st">"tree"</span>]]<span class="sc">$</span>node.label)</span>
+<span id="cb5-38"><a href="#cb5-38"></a>  }</span>
+<span id="cb5-39"><a href="#cb5-39"></a>  </span>
+<span id="cb5-40"><a href="#cb5-40"></a>  <span class="co"># sort trees in descending order</span></span>
+<span id="cb5-41"><a href="#cb5-41"></a>  phylogenetic_trees[[i]][[<span class="st">"tree"</span>]] <span class="ot">=</span> ape<span class="sc">::</span><span class="fu">ladderize</span>(phylogenetic_trees[[i]][[<span class="st">"tree"</span>]], <span class="at">right =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb5-42"><a href="#cb5-42"></a>  </span>
+<span id="cb5-43"><a href="#cb5-43"></a>  <span class="co"># set node label to numeric (BS and coalescence support)</span></span>
+<span id="cb5-44"><a href="#cb5-44"></a>  phylogenetic_trees[[i]][[<span class="st">"tree"</span>]]<span class="sc">$</span>node.label <span class="ot">=</span> <span class="fu">as.numeric</span>(phylogenetic_trees[[i]][[<span class="st">"tree"</span>]]<span class="sc">$</span>node.label)</span>
+<span id="cb5-45"><a href="#cb5-45"></a>  </span>
+<span id="cb5-46"><a href="#cb5-46"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Lets now plot a tanglegram: we will have the ML tree and the ASTRAL tree facing each other, and lines connecting the corresponding position of the same alga isolate. This will allow us to compare the two three structure, as well as how much concordant are the phylogenetic reconstructions.</p>
+<p>We will do this for the cp + mt, cp only and mt only gene sets.</p>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-1-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-1" role="tab" aria-controls="tabset-1-1" aria-selected="true">Chloroplast + Mitochondrial ML tree</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-1-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-2" role="tab" aria-controls="tabset-1-2" aria-selected="false">Chloroplast ML tree</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-1-3-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-3" role="tab" aria-controls="tabset-1-3" aria-selected="false">Mitochondrial ML tree</a></li></ul>
+<div class="tab-content">
+<div id="tabset-1-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-1-1-tab">
+<div class="cell" data-result="hide">
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode numberSource r number-lines code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1"></a>ML_tree <span class="ot">=</span> phylogenetic_trees[[<span class="st">"cp_mt_ML"</span>]][[<span class="st">"tree"</span>]]</span>
+<span id="cb6-2"><a href="#cb6-2"></a>ML_tree <span class="ot">=</span> <span class="fu">groupClade</span>(ML_tree, <span class="dv">53</span>)</span>
+<span id="cb6-3"><a href="#cb6-3"></a></span>
+<span id="cb6-4"><a href="#cb6-4"></a><span class="co"># prep ML tree</span></span>
+<span id="cb6-5"><a href="#cb6-5"></a>p_ML <span class="ot">=</span> <span class="fu">ggtree</span>(ML_tree, <span class="fu">aes</span>(<span class="at">linetype =</span> group)) <span class="sc">+</span></span>
+<span id="cb6-6"><a href="#cb6-6"></a>  <span class="fu">scale_linetype_discrete</span>(<span class="at">guide =</span> <span class="st">"none"</span>)</span>
+<span id="cb6-7"><a href="#cb6-7"></a></span>
+<span id="cb6-8"><a href="#cb6-8"></a>p_ML<span class="sc">$</span>data[p_ML<span class="sc">$</span>data<span class="sc">$</span>node <span class="sc">%in%</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>), <span class="st">"x"</span>] <span class="ot">=</span> <span class="fu">mean</span>(p_ML<span class="sc">$</span>data<span class="sc">$</span>x)</span>
+<span id="cb6-9"><a href="#cb6-9"></a>p_ML<span class="sc">$</span>data[p_ML<span class="sc">$</span>data<span class="sc">$</span>node <span class="sc">%in%</span> <span class="fu">c</span>(<span class="dv">53</span>), <span class="st">"x"</span>] <span class="ot">=</span> <span class="fu">mean</span>(p_ML<span class="sc">$</span>data<span class="sc">$</span>x)<span class="sc">/</span><span class="dv">2</span></span>
+<span id="cb6-10"><a href="#cb6-10"></a></span>
+<span id="cb6-11"><a href="#cb6-11"></a>p_ML <span class="ot">=</span> ggtree<span class="sc">::</span><span class="fu">rotate</span>(p_ML, <span class="dv">52</span>) </span>
+<span id="cb6-12"><a href="#cb6-12"></a></span>
+<span id="cb6-13"><a href="#cb6-13"></a><span class="co"># prep ASTRAL tree</span></span>
+<span id="cb6-14"><a href="#cb6-14"></a>ASTRAL_tree <span class="ot">=</span> phylogenetic_trees[[<span class="st">"cp_mt_ASTRAL"</span>]][[<span class="st">"tree"</span>]]</span>
+<span id="cb6-15"><a href="#cb6-15"></a>ASTRAL_tree <span class="ot">=</span> <span class="fu">groupClade</span>(ASTRAL_tree, <span class="dv">101</span>)</span>
+<span id="cb6-16"><a href="#cb6-16"></a></span>
+<span id="cb6-17"><a href="#cb6-17"></a>p_ASTRAL <span class="ot">=</span> <span class="fu">ggtree</span>(ASTRAL_tree, <span class="fu">aes</span>(<span class="at">linetype =</span> group)) <span class="sc">+</span></span>
+<span id="cb6-18"><a href="#cb6-18"></a>  <span class="fu">scale_linetype_discrete</span>(<span class="at">guide =</span> <span class="st">"none"</span>)</span>
+<span id="cb6-19"><a href="#cb6-19"></a></span>
+<span id="cb6-20"><a href="#cb6-20"></a>p_ASTRAL<span class="sc">$</span>data[p_ASTRAL<span class="sc">$</span>data<span class="sc">$</span>node <span class="sc">%in%</span> <span class="fu">c</span>(<span class="dv">13</span>, <span class="dv">12</span>), <span class="st">"x"</span>] <span class="ot">=</span> <span class="fu">max</span>(p_ASTRAL<span class="sc">$</span>data<span class="sc">$</span>x)</span>
+<span id="cb6-21"><a href="#cb6-21"></a>p_ASTRAL<span class="sc">$</span>data[p_ASTRAL<span class="sc">$</span>data<span class="sc">$</span>node <span class="sc">%in%</span> <span class="fu">c</span>(<span class="dv">101</span>), <span class="st">"x"</span>] <span class="ot">=</span> <span class="fu">max</span>(p_ASTRAL<span class="sc">$</span>data<span class="sc">$</span>x)<span class="sc">/</span><span class="dv">2</span></span>
+<span id="cb6-22"><a href="#cb6-22"></a></span>
+<span id="cb6-23"><a href="#cb6-23"></a>p_ASTRAL <span class="ot">=</span> ggtree<span class="sc">::</span><span class="fu">rotate</span>(p_ASTRAL, <span class="dv">52</span>) <span class="sc">+</span></span>
+<span id="cb6-24"><a href="#cb6-24"></a>  <span class="fu">geom_tiplab</span>(<span class="at">color =</span> <span class="st">"black"</span>, <span class="at">size =</span> <span class="fl">2.75</span>, <span class="at">align =</span> <span class="cn">TRUE</span>, <span class="at">linetype =</span> <span class="st">"dotted"</span>, <span class="at">linesize =</span> <span class="fl">0.7</span>) <span class="sc">+</span></span>
+<span id="cb6-25"><a href="#cb6-25"></a>  <span class="fu">geom_nodepoint</span>(<span class="fu">aes</span>(<span class="at">fill =</span> <span class="fu">cut</span>(<span class="fu">as.numeric</span>(label), <span class="fu">c</span>(<span class="dv">0</span>, <span class="fl">0.70</span>, <span class="fl">0.90</span>, <span class="fl">1.00</span>))), <span class="at">shape =</span> <span class="dv">21</span>, <span class="at">size =</span> <span class="dv">3</span>) <span class="sc">+</span></span>
+<span id="cb6-26"><a href="#cb6-26"></a>  <span class="fu">scale_fill_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">"white"</span>, <span class="st">"grey"</span>, <span class="st">"black"</span>)) <span class="sc">+</span></span>
+<span id="cb6-27"><a href="#cb6-27"></a>  <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">"none"</span>)</span>
+<span id="cb6-28"><a href="#cb6-28"></a></span>
+<span id="cb6-29"><a href="#cb6-29"></a><span class="co"># get tree data</span></span>
+<span id="cb6-30"><a href="#cb6-30"></a>d_ML <span class="ot">=</span> p_ML<span class="sc">$</span>data </span>
+<span id="cb6-31"><a href="#cb6-31"></a>d_ASTRAL <span class="ot">=</span> p_ASTRAL<span class="sc">$</span>data</span>
+<span id="cb6-32"><a href="#cb6-32"></a></span>
+<span id="cb6-33"><a href="#cb6-33"></a><span class="co"># rescale ASTRAL tree to ML tree space</span></span>
+<span id="cb6-34"><a href="#cb6-34"></a>scale_ratio_bl <span class="ot">=</span> <span class="fu">max</span>(d_ML<span class="sc">$</span>branch.length) <span class="sc">/</span> <span class="fu">max</span>(d_ASTRAL<span class="sc">$</span>branch.length)</span>
+<span id="cb6-35"><a href="#cb6-35"></a>scale_ratio_x <span class="ot">=</span> <span class="fu">max</span>(d_ML<span class="sc">$</span>x) <span class="sc">/</span> <span class="fu">max</span>(d_ASTRAL<span class="sc">$</span>x)</span>
+<span id="cb6-36"><a href="#cb6-36"></a>scale_ratio_b <span class="ot">=</span> <span class="fu">max</span>(d_ML<span class="sc">$</span>branch) <span class="sc">/</span> <span class="fu">max</span>(d_ASTRAL<span class="sc">$</span>branch) </span>
+<span id="cb6-37"><a href="#cb6-37"></a>d_ASTRAL<span class="sc">$</span>branch.length <span class="ot">=</span> d_ASTRAL<span class="sc">$</span>branch.length <span class="sc">*</span> scale_ratio_bl</span>
+<span id="cb6-38"><a href="#cb6-38"></a>d_ASTRAL<span class="sc">$</span>x <span class="ot">=</span> d_ASTRAL<span class="sc">$</span>x <span class="sc">*</span> scale_ratio_x</span>
+<span id="cb6-39"><a href="#cb6-39"></a>d_ASTRAL<span class="sc">$</span>branch <span class="ot">=</span> d_ASTRAL<span class="sc">$</span>branch <span class="sc">*</span> scale_ratio_b</span>
+<span id="cb6-40"><a href="#cb6-40"></a></span>
+<span id="cb6-41"><a href="#cb6-41"></a><span class="co"># reverse x-axis and set offset to make ASTRAL tree on the right-hand side of ML tree</span></span>
+<span id="cb6-42"><a href="#cb6-42"></a>d_ASTRAL<span class="sc">$</span>x <span class="ot">=</span> <span class="fu">max</span>(d_ASTRAL<span class="sc">$</span>x) <span class="sc">-</span> d_ASTRAL<span class="sc">$</span>x <span class="sc">+</span> <span class="fu">max</span>(d_ML<span class="sc">$</span>x) <span class="sc">+</span> <span class="fl">0.1</span></span>
+<span id="cb6-43"><a href="#cb6-43"></a></span>
+<span id="cb6-44"><a href="#cb6-44"></a></span>
+<span id="cb6-45"><a href="#cb6-45"></a><span class="co"># combine trees</span></span>
+<span id="cb6-46"><a href="#cb6-46"></a>p_combined <span class="ot">=</span> p_ML <span class="sc">+</span></span>
+<span id="cb6-47"><a href="#cb6-47"></a>  <span class="fu">geom_nodepoint</span>(<span class="fu">aes</span>(<span class="at">fill =</span> <span class="fu">cut</span>(<span class="fu">as.numeric</span>(label),</span>
+<span id="cb6-48"><a href="#cb6-48"></a>                                <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">70</span>, <span class="dv">90</span>, <span class="dv">100</span>))), <span class="at">shape =</span> <span class="dv">21</span>, <span class="at">size =</span> <span class="dv">3</span>) <span class="sc">+</span></span>
+<span id="cb6-49"><a href="#cb6-49"></a>  <span class="fu">scale_fill_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">"black"</span>, <span class="st">"grey"</span>, <span class="st">"white"</span>),</span>
+<span id="cb6-50"><a href="#cb6-50"></a>                    <span class="at">guide =</span> <span class="st">"legend"</span>,</span>
+<span id="cb6-51"><a href="#cb6-51"></a>                    <span class="at">name =</span> <span class="st">"Bootstrap"</span>,</span>
+<span id="cb6-52"><a href="#cb6-52"></a>                    <span class="at">breaks =</span> <span class="fu">c</span>(<span class="st">"(90,100]"</span>, <span class="st">"(70,90]"</span>, <span class="st">"(0,70]"</span>),</span>
+<span id="cb6-53"><a href="#cb6-53"></a>                    <span class="at">labels =</span> <span class="fu">expression</span>(BP<span class="sc">&gt;=</span><span class="dv">90</span>,<span class="dv">70</span> <span class="sc">&lt;=</span> BP <span class="sc">*</span> <span class="st">" &lt; 90"</span>, BP <span class="sc">&lt;</span> <span class="dv">70</span>)) <span class="sc">+</span></span>
+<span id="cb6-54"><a href="#cb6-54"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">"cp + mt, 99 genes"</span>) <span class="sc">+</span></span>
+<span id="cb6-55"><a href="#cb6-55"></a>  <span class="fu">theme</span>(<span class="at">plot.title =</span> <span class="fu">element_text</span>(<span class="at">hjust =</span> <span class="fl">0.5</span>),</span>
+<span id="cb6-56"><a href="#cb6-56"></a>        <span class="at">legend.position =</span> <span class="st">"bottom"</span>) <span class="sc">+</span></span>
+<span id="cb6-57"><a href="#cb6-57"></a>  <span class="fu">geom_tree</span>(<span class="at">data =</span> d_ASTRAL) <span class="sc">+</span></span>
+<span id="cb6-58"><a href="#cb6-58"></a>  <span class="co">#geom_tiplab(data = d_ASTRAL, color = "black", size = 2.75, align = TRUE, linetype = "dotted", linesize = 0.7) +</span></span>
+<span id="cb6-59"><a href="#cb6-59"></a>  ggnewscale<span class="sc">::</span><span class="fu">new_scale_fill</span>() <span class="sc">+</span></span>
+<span id="cb6-60"><a href="#cb6-60"></a>  <span class="fu">geom_nodepoint</span>(<span class="at">data =</span> d_ASTRAL, <span class="fu">aes</span>(<span class="at">fill =</span> <span class="fu">cut</span>(<span class="fu">as.numeric</span>(label), <span class="fu">c</span>(<span class="dv">0</span>, <span class="fl">0.70</span>, <span class="fl">0.90</span>, <span class="fl">1.00</span>))), <span class="at">shape =</span> <span class="dv">21</span>, <span class="at">size =</span> <span class="dv">3</span>) <span class="sc">+</span></span>
+<span id="cb6-61"><a href="#cb6-61"></a>  <span class="fu">scale_fill_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">"white"</span>, <span class="st">"grey"</span>, <span class="st">"black"</span>), <span class="at">guide =</span> <span class="st">"none"</span>)</span>
+<span id="cb6-62"><a href="#cb6-62"></a></span>
+<span id="cb6-63"><a href="#cb6-63"></a><span class="co"># combine tip data</span></span>
+<span id="cb6-64"><a href="#cb6-64"></a>d_ML<span class="sc">$</span>x <span class="ot">=</span> <span class="fu">max</span>(d_ML<span class="sc">$</span>x) <span class="sc">+</span> <span class="fl">0.05</span></span>
+<span id="cb6-65"><a href="#cb6-65"></a>d_ASTRAL<span class="sc">$</span>x <span class="ot">=</span> d_ASTRAL<span class="sc">$</span>x <span class="sc">-</span> <span class="fl">0.0125</span></span>
+<span id="cb6-66"><a href="#cb6-66"></a>d_labels <span class="ot">=</span> dplyr<span class="sc">::</span><span class="fu">bind_rows</span>(d_ML, d_ASTRAL) <span class="sc">%&gt;%</span></span>
+<span id="cb6-67"><a href="#cb6-67"></a>  dplyr<span class="sc">::</span><span class="fu">filter</span>(isTip <span class="sc">==</span> <span class="cn">TRUE</span>)</span>
+<span id="cb6-68"><a href="#cb6-68"></a>d_labels<span class="sc">$</span>color_group <span class="ot">=</span> <span class="fu">ifelse</span>(</span>
+<span id="cb6-69"><a href="#cb6-69"></a>  d_labels<span class="sc">$</span>label <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">"Ufene"</span>, <span class="st">"Usp4"</span>), <span class="st">"red"</span>,</span>
+<span id="cb6-70"><a href="#cb6-70"></a>  <span class="fu">ifelse</span>(d_labels<span class="sc">$</span>label <span class="sc">%in%</span> <span class="fu">c</span>(</span>
+<span id="cb6-71"><a href="#cb6-71"></a>    <span class="st">"Uaust1"</span>, <span class="st">"Uaust2"</span>, <span class="st">"Uaust4"</span>, <span class="st">"Ufaust5"</span>, <span class="st">"Ufaust6"</span>,</span>
+<span id="cb6-72"><a href="#cb6-72"></a>    <span class="st">"Ucomp1"</span>, <span class="st">"Ucomp2"</span>, <span class="st">"Ucomp3"</span>, <span class="st">"Ucomp4"</span>, <span class="st">"Ucomp5"</span>, <span class="st">"Ucomp6"</span>, <span class="st">"Ucomp7"</span>, <span class="st">"Ucomp8"</span>, <span class="st">"Ucomp9"</span>, <span class="st">"Ucomp10"</span>,</span>
+<span id="cb6-73"><a href="#cb6-73"></a>    <span class="st">"Ulact2"</span>, <span class="st">"Ulact3"</span>,</span>
+<span id="cb6-74"><a href="#cb6-74"></a>    <span class="st">"Umeri1"</span>, <span class="st">"Umeri3"</span>, <span class="st">"Umeri4"</span>, <span class="st">"Umeri5"</span>), <span class="st">"grey"</span>, <span class="st">"steelblue"</span>)</span>
+<span id="cb6-75"><a href="#cb6-75"></a>)</span>
+<span id="cb6-76"><a href="#cb6-76"></a></span>
+<span id="cb6-77"><a href="#cb6-77"></a>p_combined <span class="sc">+</span></span>
+<span id="cb6-78"><a href="#cb6-78"></a>  <span class="fu">geom_tiplab</span>(<span class="at">color =</span> <span class="st">"antiquewhite3"</span>, <span class="at">size =</span> <span class="fl">2.75</span>, <span class="at">align =</span> <span class="cn">TRUE</span>, <span class="at">linetype =</span> <span class="st">"dotted"</span>, <span class="at">linesize =</span> <span class="fl">0.7</span>) <span class="sc">+</span></span>
+<span id="cb6-79"><a href="#cb6-79"></a>  <span class="fu">geom_tiplab</span>(<span class="at">color =</span> <span class="st">"black"</span>, <span class="at">size =</span> <span class="fl">2.75</span>, <span class="at">align =</span> <span class="cn">TRUE</span>, <span class="at">linetype =</span> <span class="st">"dotted"</span>, <span class="at">linesize =</span> <span class="dv">0</span>) <span class="sc">+</span></span>
+<span id="cb6-80"><a href="#cb6-80"></a>  <span class="fu">geom_line</span>(<span class="at">data =</span> d_labels, <span class="fu">aes</span>(x, y, <span class="at">group =</span> label, <span class="at">color =</span> color_group)) <span class="sc">+</span></span>
+<span id="cb6-81"><a href="#cb6-81"></a>  <span class="fu">scale_color_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">"grey"</span>, <span class="st">"red"</span>, <span class="st">"steelblue"</span>), <span class="at">guide =</span> <span class="cn">FALSE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="cp-and-mt-phylogeny-reconstruction_files/figure-html/unnamed-chunk-9-1.png" class="img-fluid figure-img" width="960"></p>
+<figcaption>Figure 1: cp + mt species tree reconstruction</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<div id="tabset-1-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-1-2-tab">
+<div class="cell" data-result="hide">
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode numberSource r number-lines code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1"></a>ML_tree <span class="ot">=</span> phylogenetic_trees[[<span class="st">"cp_ML"</span>]][[<span class="st">"tree"</span>]]</span>
+<span id="cb7-2"><a href="#cb7-2"></a>ML_tree <span class="ot">=</span> <span class="fu">groupClade</span>(ML_tree, <span class="dv">37</span>)</span>
+<span id="cb7-3"><a href="#cb7-3"></a></span>
+<span id="cb7-4"><a href="#cb7-4"></a><span class="co"># prep ML tree</span></span>
+<span id="cb7-5"><a href="#cb7-5"></a>p_ML <span class="ot">=</span> <span class="fu">ggtree</span>(ML_tree, <span class="fu">aes</span>(<span class="at">linetype =</span> group)) <span class="sc">+</span></span>
+<span id="cb7-6"><a href="#cb7-6"></a>  <span class="fu">scale_linetype_discrete</span>(<span class="at">guide =</span> <span class="st">"none"</span>)</span>
+<span id="cb7-7"><a href="#cb7-7"></a></span>
+<span id="cb7-8"><a href="#cb7-8"></a>p_ML<span class="sc">$</span>data[p_ML<span class="sc">$</span>data<span class="sc">$</span>node <span class="sc">%in%</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>), <span class="st">"x"</span>] <span class="ot">=</span> <span class="fu">mean</span>(p_ML<span class="sc">$</span>data<span class="sc">$</span>x)</span>
+<span id="cb7-9"><a href="#cb7-9"></a>p_ML<span class="sc">$</span>data[p_ML<span class="sc">$</span>data<span class="sc">$</span>node <span class="sc">%in%</span> <span class="fu">c</span>(<span class="dv">38</span>), <span class="st">"x"</span>] <span class="ot">=</span> <span class="fu">mean</span>(p_ML<span class="sc">$</span>data<span class="sc">$</span>x)<span class="sc">/</span><span class="dv">2</span></span>
+<span id="cb7-10"><a href="#cb7-10"></a></span>
+<span id="cb7-11"><a href="#cb7-11"></a>p_ML <span class="ot">=</span> ggtree<span class="sc">::</span><span class="fu">rotate</span>(p_ML, <span class="dv">37</span>) </span>
+<span id="cb7-12"><a href="#cb7-12"></a></span>
+<span id="cb7-13"><a href="#cb7-13"></a><span class="co"># prep ASTRAL tree</span></span>
+<span id="cb7-14"><a href="#cb7-14"></a>ASTRAL_tree <span class="ot">=</span> phylogenetic_trees[[<span class="st">"cp_ASTRAL"</span>]][[<span class="st">"tree"</span>]]</span>
+<span id="cb7-15"><a href="#cb7-15"></a>ASTRAL_tree <span class="ot">=</span> <span class="fu">groupClade</span>(ASTRAL_tree, <span class="dv">37</span>)</span>
+<span id="cb7-16"><a href="#cb7-16"></a></span>
+<span id="cb7-17"><a href="#cb7-17"></a>p_ASTRAL <span class="ot">=</span> <span class="fu">ggtree</span>(ASTRAL_tree, <span class="fu">aes</span>(<span class="at">linetype =</span> group)) <span class="sc">+</span></span>
+<span id="cb7-18"><a href="#cb7-18"></a>  <span class="fu">scale_linetype_discrete</span>(<span class="at">guide =</span> <span class="st">"none"</span>)</span>
+<span id="cb7-19"><a href="#cb7-19"></a></span>
+<span id="cb7-20"><a href="#cb7-20"></a>p_ASTRAL<span class="sc">$</span>data[p_ASTRAL<span class="sc">$</span>data<span class="sc">$</span>node <span class="sc">%in%</span> <span class="fu">c</span>(<span class="dv">20</span>, <span class="dv">21</span>), <span class="st">"x"</span>] <span class="ot">=</span> <span class="fu">max</span>(p_ASTRAL<span class="sc">$</span>data<span class="sc">$</span>x)</span>
+<span id="cb7-21"><a href="#cb7-21"></a>p_ASTRAL<span class="sc">$</span>data[p_ASTRAL<span class="sc">$</span>data<span class="sc">$</span>node <span class="sc">%in%</span> <span class="fu">c</span>(<span class="dv">71</span>), <span class="st">"x"</span>] <span class="ot">=</span> <span class="fu">max</span>(p_ASTRAL<span class="sc">$</span>data<span class="sc">$</span>x)<span class="sc">/</span><span class="dv">2</span></span>
+<span id="cb7-22"><a href="#cb7-22"></a></span>
+<span id="cb7-23"><a href="#cb7-23"></a>p_ASTRAL <span class="ot">=</span> ggtree<span class="sc">::</span><span class="fu">rotate</span>(p_ASTRAL, <span class="dv">37</span>) <span class="sc">+</span></span>
+<span id="cb7-24"><a href="#cb7-24"></a>  <span class="fu">geom_tiplab</span>(<span class="at">color =</span> <span class="st">"black"</span>, <span class="at">size =</span> <span class="fl">2.75</span>, <span class="at">align =</span> <span class="cn">TRUE</span>, <span class="at">linetype =</span> <span class="st">"dotted"</span>, <span class="at">linesize =</span> <span class="fl">0.7</span>) <span class="sc">+</span></span>
+<span id="cb7-25"><a href="#cb7-25"></a>  <span class="fu">geom_nodepoint</span>(<span class="fu">aes</span>(<span class="at">fill =</span> <span class="fu">cut</span>(<span class="fu">as.numeric</span>(label), <span class="fu">c</span>(<span class="dv">0</span>, <span class="fl">0.70</span>, <span class="fl">0.90</span>, <span class="fl">1.00</span>))), <span class="at">shape =</span> <span class="dv">21</span>, <span class="at">size =</span> <span class="dv">3</span>) <span class="sc">+</span></span>
+<span id="cb7-26"><a href="#cb7-26"></a>  <span class="fu">scale_fill_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">"white"</span>, <span class="st">"grey"</span>, <span class="st">"black"</span>)) <span class="sc">+</span></span>
+<span id="cb7-27"><a href="#cb7-27"></a>  <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">"none"</span>)</span>
+<span id="cb7-28"><a href="#cb7-28"></a></span>
+<span id="cb7-29"><a href="#cb7-29"></a><span class="co"># get tree data</span></span>
+<span id="cb7-30"><a href="#cb7-30"></a>d_ML <span class="ot">=</span> p_ML<span class="sc">$</span>data </span>
+<span id="cb7-31"><a href="#cb7-31"></a>d_ASTRAL <span class="ot">=</span> p_ASTRAL<span class="sc">$</span>data</span>
+<span id="cb7-32"><a href="#cb7-32"></a></span>
+<span id="cb7-33"><a href="#cb7-33"></a><span class="co"># rescale ASTRAL tree to ML tree space</span></span>
+<span id="cb7-34"><a href="#cb7-34"></a>scale_ratio_bl <span class="ot">=</span> <span class="fu">max</span>(d_ML<span class="sc">$</span>branch.length) <span class="sc">/</span> <span class="fu">max</span>(d_ASTRAL<span class="sc">$</span>branch.length)</span>
+<span id="cb7-35"><a href="#cb7-35"></a>scale_ratio_x <span class="ot">=</span> <span class="fu">max</span>(d_ML<span class="sc">$</span>x) <span class="sc">/</span> <span class="fu">max</span>(d_ASTRAL<span class="sc">$</span>x)</span>
+<span id="cb7-36"><a href="#cb7-36"></a>scale_ratio_b <span class="ot">=</span> <span class="fu">max</span>(d_ML<span class="sc">$</span>branch) <span class="sc">/</span> <span class="fu">max</span>(d_ASTRAL<span class="sc">$</span>branch) </span>
+<span id="cb7-37"><a href="#cb7-37"></a>d_ASTRAL<span class="sc">$</span>branch.length <span class="ot">=</span> d_ASTRAL<span class="sc">$</span>branch.length <span class="sc">*</span> scale_ratio_bl</span>
+<span id="cb7-38"><a href="#cb7-38"></a>d_ASTRAL<span class="sc">$</span>x <span class="ot">=</span> d_ASTRAL<span class="sc">$</span>x <span class="sc">*</span> scale_ratio_x</span>
+<span id="cb7-39"><a href="#cb7-39"></a>d_ASTRAL<span class="sc">$</span>branch <span class="ot">=</span> d_ASTRAL<span class="sc">$</span>branch <span class="sc">*</span> scale_ratio_b</span>
+<span id="cb7-40"><a href="#cb7-40"></a></span>
+<span id="cb7-41"><a href="#cb7-41"></a><span class="co"># reverse x-axis and set offset to make ASTRAL tree on the right-hand side of ML tree</span></span>
+<span id="cb7-42"><a href="#cb7-42"></a>d_ASTRAL<span class="sc">$</span>x <span class="ot">=</span> <span class="fu">max</span>(d_ASTRAL<span class="sc">$</span>x) <span class="sc">-</span> d_ASTRAL<span class="sc">$</span>x <span class="sc">+</span> <span class="fu">max</span>(d_ML<span class="sc">$</span>x) <span class="sc">+</span> <span class="fl">0.1</span></span>
+<span id="cb7-43"><a href="#cb7-43"></a></span>
+<span id="cb7-44"><a href="#cb7-44"></a></span>
+<span id="cb7-45"><a href="#cb7-45"></a><span class="co"># combine trees</span></span>
+<span id="cb7-46"><a href="#cb7-46"></a>p_combined <span class="ot">=</span> p_ML <span class="sc">+</span></span>
+<span id="cb7-47"><a href="#cb7-47"></a>  <span class="fu">geom_nodepoint</span>(<span class="fu">aes</span>(<span class="at">fill =</span> <span class="fu">cut</span>(<span class="fu">as.numeric</span>(label),</span>
+<span id="cb7-48"><a href="#cb7-48"></a>                                <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">70</span>, <span class="dv">90</span>, <span class="dv">100</span>))), <span class="at">shape =</span> <span class="dv">21</span>, <span class="at">size =</span> <span class="dv">3</span>) <span class="sc">+</span></span>
+<span id="cb7-49"><a href="#cb7-49"></a>  <span class="fu">scale_fill_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">"black"</span>, <span class="st">"grey"</span>, <span class="st">"white"</span>),</span>
+<span id="cb7-50"><a href="#cb7-50"></a>                    <span class="at">guide =</span> <span class="st">"legend"</span>,</span>
+<span id="cb7-51"><a href="#cb7-51"></a>                    <span class="at">name =</span> <span class="st">"Bootstrap"</span>,</span>
+<span id="cb7-52"><a href="#cb7-52"></a>                    <span class="at">breaks =</span> <span class="fu">c</span>(<span class="st">"(90,100]"</span>, <span class="st">"(70,90]"</span>, <span class="st">"(0,70]"</span>),</span>
+<span id="cb7-53"><a href="#cb7-53"></a>                    <span class="at">labels =</span> <span class="fu">expression</span>(BP<span class="sc">&gt;=</span><span class="dv">90</span>,<span class="dv">70</span> <span class="sc">&lt;=</span> BP <span class="sc">*</span> <span class="st">" &lt; 90"</span>, BP <span class="sc">&lt;</span> <span class="dv">70</span>)) <span class="sc">+</span></span>
+<span id="cb7-54"><a href="#cb7-54"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">"cp, 70 genes"</span>) <span class="sc">+</span></span>
+<span id="cb7-55"><a href="#cb7-55"></a>  <span class="fu">theme</span>(<span class="at">plot.title =</span> <span class="fu">element_text</span>(<span class="at">hjust =</span> <span class="fl">0.5</span>),</span>
+<span id="cb7-56"><a href="#cb7-56"></a>        <span class="at">legend.position =</span> <span class="st">"bottom"</span>) <span class="sc">+</span></span>
+<span id="cb7-57"><a href="#cb7-57"></a>  <span class="fu">geom_tree</span>(<span class="at">data =</span> d_ASTRAL) <span class="sc">+</span></span>
+<span id="cb7-58"><a href="#cb7-58"></a>  ggnewscale<span class="sc">::</span><span class="fu">new_scale_fill</span>() <span class="sc">+</span></span>
+<span id="cb7-59"><a href="#cb7-59"></a>  <span class="fu">geom_nodepoint</span>(<span class="at">data =</span> d_ASTRAL, <span class="fu">aes</span>(<span class="at">fill =</span> <span class="fu">cut</span>(<span class="fu">as.numeric</span>(label), <span class="fu">c</span>(<span class="dv">0</span>, <span class="fl">0.70</span>, <span class="fl">0.90</span>, <span class="fl">1.00</span>))), <span class="at">shape =</span> <span class="dv">21</span>, <span class="at">size =</span> <span class="dv">3</span>) <span class="sc">+</span></span>
+<span id="cb7-60"><a href="#cb7-60"></a>  <span class="fu">scale_fill_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">"white"</span>, <span class="st">"grey"</span>, <span class="st">"black"</span>), <span class="at">guide =</span> <span class="st">"none"</span>)</span>
+<span id="cb7-61"><a href="#cb7-61"></a></span>
+<span id="cb7-62"><a href="#cb7-62"></a><span class="co"># combine tip data</span></span>
+<span id="cb7-63"><a href="#cb7-63"></a>d_ML<span class="sc">$</span>x <span class="ot">=</span> <span class="fu">max</span>(d_ML<span class="sc">$</span>x) <span class="sc">+</span> <span class="fl">0.05</span></span>
+<span id="cb7-64"><a href="#cb7-64"></a>d_ASTRAL<span class="sc">$</span>x <span class="ot">=</span> d_ASTRAL<span class="sc">$</span>x <span class="sc">-</span> <span class="fl">0.0125</span></span>
+<span id="cb7-65"><a href="#cb7-65"></a>d_labels <span class="ot">=</span> dplyr<span class="sc">::</span><span class="fu">bind_rows</span>(d_ML, d_ASTRAL) <span class="sc">%&gt;%</span></span>
+<span id="cb7-66"><a href="#cb7-66"></a>  dplyr<span class="sc">::</span><span class="fu">filter</span>(isTip <span class="sc">==</span> <span class="cn">TRUE</span>)</span>
+<span id="cb7-67"><a href="#cb7-67"></a>d_labels<span class="sc">$</span>color_group <span class="ot">=</span> <span class="fu">ifelse</span>(</span>
+<span id="cb7-68"><a href="#cb7-68"></a>  d_labels<span class="sc">$</span>label <span class="sc">%in%</span> <span class="fu">c</span>(</span>
+<span id="cb7-69"><a href="#cb7-69"></a>    <span class="st">"Ucomp5"</span>, <span class="st">"Ucomp9"</span>, <span class="st">"Ucomp10"</span>, <span class="st">"Ucomp3"</span>, <span class="st">"Ucomp1"</span>, <span class="st">"Ucomp2"</span>, <span class="st">"Ucomp6"</span>, <span class="st">"Ucomp4"</span>,</span>
+<span id="cb7-70"><a href="#cb7-70"></a>    <span class="st">"Ulinz"</span>, <span class="st">"Uprol3"</span>, <span class="st">"Uprol2"</span>, <span class="st">"Utort"</span>, <span class="st">"Uflex1"</span>, <span class="st">"Ucali"</span>,</span>
+<span id="cb7-71"><a href="#cb7-71"></a>    <span class="st">"Umeri7"</span>, <span class="st">"Umeri6"</span>, <span class="st">"Usp2"</span>, <span class="st">"Uprol1"</span>,</span>
+<span id="cb7-72"><a href="#cb7-72"></a>    <span class="st">"Ulaci1"</span>, <span class="st">"Uaust3"</span>, <span class="st">"Urigi1"</span>, <span class="st">"Ulaci2"</span></span>
+<span id="cb7-73"><a href="#cb7-73"></a>  ), <span class="st">"grey"</span>, <span class="st">"steelblue"</span></span>
+<span id="cb7-74"><a href="#cb7-74"></a>)</span>
+<span id="cb7-75"><a href="#cb7-75"></a></span>
+<span id="cb7-76"><a href="#cb7-76"></a>p_combined <span class="sc">+</span></span>
+<span id="cb7-77"><a href="#cb7-77"></a>  <span class="fu">geom_tiplab</span>(<span class="at">color =</span> <span class="st">"antiquewhite3"</span>, <span class="at">size =</span> <span class="fl">2.75</span>, <span class="at">align =</span> <span class="cn">TRUE</span>, <span class="at">linetype =</span> <span class="st">"dotted"</span>, <span class="at">linesize =</span> <span class="fl">0.7</span>) <span class="sc">+</span></span>
+<span id="cb7-78"><a href="#cb7-78"></a>  <span class="fu">geom_tiplab</span>(<span class="at">color =</span> <span class="st">"black"</span>, <span class="at">size =</span> <span class="fl">2.75</span>, <span class="at">align =</span> <span class="cn">TRUE</span>, <span class="at">linetype =</span> <span class="st">"dotted"</span>, <span class="at">linesize =</span> <span class="dv">0</span>) <span class="sc">+</span></span>
+<span id="cb7-79"><a href="#cb7-79"></a>  <span class="fu">geom_line</span>(<span class="at">data =</span> d_labels, <span class="fu">aes</span>(x, y, <span class="at">group =</span> label, <span class="at">color =</span> color_group)) <span class="sc">+</span></span>
+<span id="cb7-80"><a href="#cb7-80"></a>  <span class="fu">scale_color_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">"grey"</span>, <span class="st">"steelblue"</span>), <span class="at">guide =</span> <span class="cn">FALSE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="cp-and-mt-phylogeny-reconstruction_files/figure-html/unnamed-chunk-10-1.png" class="img-fluid figure-img" width="960"></p>
+<figcaption>Figure 2: cp species tree reconstruction</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<div id="tabset-1-3" class="tab-pane" role="tabpanel" aria-labelledby="tabset-1-3-tab">
+<div class="cell" data-result="hide">
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode numberSource r number-lines code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1"></a>ML_tree <span class="ot">=</span> phylogenetic_trees[[<span class="st">"mt_ML"</span>]][[<span class="st">"tree"</span>]]</span>
+<span id="cb8-2"><a href="#cb8-2"></a>ML_tree <span class="ot">=</span> <span class="fu">groupClade</span>(ML_tree, <span class="dv">40</span>)</span>
+<span id="cb8-3"><a href="#cb8-3"></a></span>
+<span id="cb8-4"><a href="#cb8-4"></a><span class="co"># prep ML tree</span></span>
+<span id="cb8-5"><a href="#cb8-5"></a>p_ML <span class="ot">=</span> <span class="fu">ggtree</span>(ML_tree, <span class="fu">aes</span>(<span class="at">linetype =</span> group)) <span class="sc">+</span></span>
+<span id="cb8-6"><a href="#cb8-6"></a>  <span class="fu">scale_linetype_discrete</span>(<span class="at">guide =</span> <span class="st">"none"</span>)</span>
+<span id="cb8-7"><a href="#cb8-7"></a></span>
+<span id="cb8-8"><a href="#cb8-8"></a>p_ML<span class="sc">$</span>data[p_ML<span class="sc">$</span>data<span class="sc">$</span>node <span class="sc">%in%</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>), <span class="st">"x"</span>] <span class="ot">=</span> <span class="fu">mean</span>(p_ML<span class="sc">$</span>data<span class="sc">$</span>x)</span>
+<span id="cb8-9"><a href="#cb8-9"></a>p_ML<span class="sc">$</span>data[p_ML<span class="sc">$</span>data<span class="sc">$</span>node <span class="sc">%in%</span> <span class="fu">c</span>(<span class="dv">41</span>), <span class="st">"x"</span>] <span class="ot">=</span> <span class="fu">mean</span>(p_ML<span class="sc">$</span>data<span class="sc">$</span>x)<span class="sc">/</span><span class="dv">2</span></span>
+<span id="cb8-10"><a href="#cb8-10"></a></span>
+<span id="cb8-11"><a href="#cb8-11"></a>p_ML <span class="ot">=</span> ggtree<span class="sc">::</span><span class="fu">rotate</span>(p_ML, <span class="dv">40</span>) </span>
+<span id="cb8-12"><a href="#cb8-12"></a></span>
+<span id="cb8-13"><a href="#cb8-13"></a><span class="co"># prep ASTRAL tree</span></span>
+<span id="cb8-14"><a href="#cb8-14"></a>ASTRAL_tree <span class="ot">=</span> phylogenetic_trees[[<span class="st">"mt_ASTRAL"</span>]][[<span class="st">"tree"</span>]]</span>
+<span id="cb8-15"><a href="#cb8-15"></a>ASTRAL_tree <span class="ot">=</span> <span class="fu">groupClade</span>(ASTRAL_tree, <span class="dv">40</span>)</span>
+<span id="cb8-16"><a href="#cb8-16"></a></span>
+<span id="cb8-17"><a href="#cb8-17"></a>p_ASTRAL <span class="ot">=</span> <span class="fu">ggtree</span>(ASTRAL_tree, <span class="fu">aes</span>(<span class="at">linetype =</span> group)) <span class="sc">+</span></span>
+<span id="cb8-18"><a href="#cb8-18"></a>  <span class="fu">scale_linetype_discrete</span>(<span class="at">guide =</span> <span class="st">"none"</span>)</span>
+<span id="cb8-19"><a href="#cb8-19"></a></span>
+<span id="cb8-20"><a href="#cb8-20"></a>p_ASTRAL<span class="sc">$</span>data[p_ASTRAL<span class="sc">$</span>data<span class="sc">$</span>node <span class="sc">%in%</span> <span class="fu">c</span>(<span class="dv">25</span>, <span class="dv">24</span>), <span class="st">"x"</span>] <span class="ot">=</span> <span class="fu">max</span>(p_ASTRAL<span class="sc">$</span>data<span class="sc">$</span>x)</span>
+<span id="cb8-21"><a href="#cb8-21"></a>p_ASTRAL<span class="sc">$</span>data[p_ASTRAL<span class="sc">$</span>data<span class="sc">$</span>node <span class="sc">%in%</span> <span class="fu">c</span>(<span class="dv">77</span>), <span class="st">"x"</span>] <span class="ot">=</span> <span class="fu">max</span>(p_ASTRAL<span class="sc">$</span>data<span class="sc">$</span>x)<span class="sc">/</span><span class="dv">2</span></span>
+<span id="cb8-22"><a href="#cb8-22"></a></span>
+<span id="cb8-23"><a href="#cb8-23"></a>p_ASTRAL <span class="ot">=</span> ggtree<span class="sc">::</span><span class="fu">rotate</span>(p_ASTRAL, <span class="dv">40</span>) <span class="sc">+</span></span>
+<span id="cb8-24"><a href="#cb8-24"></a>  <span class="fu">geom_tiplab</span>(<span class="at">color =</span> <span class="st">"black"</span>, <span class="at">size =</span> <span class="fl">2.75</span>, <span class="at">align =</span> <span class="cn">TRUE</span>, <span class="at">linetype =</span> <span class="st">"dotted"</span>, <span class="at">linesize =</span> <span class="fl">0.7</span>) <span class="sc">+</span></span>
+<span id="cb8-25"><a href="#cb8-25"></a>  <span class="fu">geom_nodepoint</span>(<span class="fu">aes</span>(<span class="at">fill =</span> <span class="fu">cut</span>(<span class="fu">as.numeric</span>(label), <span class="fu">c</span>(<span class="dv">0</span>, <span class="fl">0.70</span>, <span class="fl">0.90</span>, <span class="fl">1.00</span>))), <span class="at">shape =</span> <span class="dv">21</span>, <span class="at">size =</span> <span class="dv">3</span>) <span class="sc">+</span></span>
+<span id="cb8-26"><a href="#cb8-26"></a>  <span class="fu">scale_fill_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">"white"</span>, <span class="st">"grey"</span>, <span class="st">"black"</span>)) <span class="sc">+</span></span>
+<span id="cb8-27"><a href="#cb8-27"></a>  <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">"none"</span>)</span>
+<span id="cb8-28"><a href="#cb8-28"></a></span>
+<span id="cb8-29"><a href="#cb8-29"></a><span class="co"># get tree data</span></span>
+<span id="cb8-30"><a href="#cb8-30"></a>d_ML <span class="ot">=</span> p_ML<span class="sc">$</span>data </span>
+<span id="cb8-31"><a href="#cb8-31"></a>d_ASTRAL <span class="ot">=</span> p_ASTRAL<span class="sc">$</span>data</span>
+<span id="cb8-32"><a href="#cb8-32"></a></span>
+<span id="cb8-33"><a href="#cb8-33"></a><span class="co"># rescale ASTRAL tree to ML tree space</span></span>
+<span id="cb8-34"><a href="#cb8-34"></a>scale_ratio_bl <span class="ot">=</span> <span class="fu">max</span>(d_ML<span class="sc">$</span>branch.length) <span class="sc">/</span> <span class="fu">max</span>(d_ASTRAL<span class="sc">$</span>branch.length)</span>
+<span id="cb8-35"><a href="#cb8-35"></a>scale_ratio_x <span class="ot">=</span> <span class="fu">max</span>(d_ML<span class="sc">$</span>x) <span class="sc">/</span> <span class="fu">max</span>(d_ASTRAL<span class="sc">$</span>x)</span>
+<span id="cb8-36"><a href="#cb8-36"></a>scale_ratio_b <span class="ot">=</span> <span class="fu">max</span>(d_ML<span class="sc">$</span>branch) <span class="sc">/</span> <span class="fu">max</span>(d_ASTRAL<span class="sc">$</span>branch) </span>
+<span id="cb8-37"><a href="#cb8-37"></a>d_ASTRAL<span class="sc">$</span>branch.length <span class="ot">=</span> d_ASTRAL<span class="sc">$</span>branch.length <span class="sc">*</span> scale_ratio_bl</span>
+<span id="cb8-38"><a href="#cb8-38"></a>d_ASTRAL<span class="sc">$</span>x <span class="ot">=</span> d_ASTRAL<span class="sc">$</span>x <span class="sc">*</span> scale_ratio_x</span>
+<span id="cb8-39"><a href="#cb8-39"></a>d_ASTRAL<span class="sc">$</span>branch <span class="ot">=</span> d_ASTRAL<span class="sc">$</span>branch <span class="sc">*</span> scale_ratio_b</span>
+<span id="cb8-40"><a href="#cb8-40"></a></span>
+<span id="cb8-41"><a href="#cb8-41"></a><span class="co"># reverse x-axis and set offset to make ASTRAL tree on the right-hand side of ML tree</span></span>
+<span id="cb8-42"><a href="#cb8-42"></a>d_ASTRAL<span class="sc">$</span>x <span class="ot">=</span> <span class="fu">max</span>(d_ASTRAL<span class="sc">$</span>x) <span class="sc">-</span> d_ASTRAL<span class="sc">$</span>x <span class="sc">+</span> <span class="fu">max</span>(d_ML<span class="sc">$</span>x) <span class="sc">+</span> <span class="fl">0.1</span></span>
+<span id="cb8-43"><a href="#cb8-43"></a></span>
+<span id="cb8-44"><a href="#cb8-44"></a></span>
+<span id="cb8-45"><a href="#cb8-45"></a><span class="co"># combine trees</span></span>
+<span id="cb8-46"><a href="#cb8-46"></a>p_combined <span class="ot">=</span> p_ML <span class="sc">+</span></span>
+<span id="cb8-47"><a href="#cb8-47"></a>  <span class="fu">geom_nodepoint</span>(<span class="fu">aes</span>(<span class="at">fill =</span> <span class="fu">cut</span>(<span class="fu">as.numeric</span>(label),</span>
+<span id="cb8-48"><a href="#cb8-48"></a>                                <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">70</span>, <span class="dv">90</span>, <span class="dv">100</span>))), <span class="at">shape =</span> <span class="dv">21</span>, <span class="at">size =</span> <span class="dv">3</span>) <span class="sc">+</span></span>
+<span id="cb8-49"><a href="#cb8-49"></a>  <span class="fu">scale_fill_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">"black"</span>, <span class="st">"grey"</span>, <span class="st">"white"</span>),</span>
+<span id="cb8-50"><a href="#cb8-50"></a>                    <span class="at">guide =</span> <span class="st">"legend"</span>,</span>
+<span id="cb8-51"><a href="#cb8-51"></a>                    <span class="at">name =</span> <span class="st">"Bootstrap"</span>,</span>
+<span id="cb8-52"><a href="#cb8-52"></a>                    <span class="at">breaks =</span> <span class="fu">c</span>(<span class="st">"(90,100]"</span>, <span class="st">"(70,90]"</span>, <span class="st">"(0,70]"</span>),</span>
+<span id="cb8-53"><a href="#cb8-53"></a>                    <span class="at">labels =</span> <span class="fu">expression</span>(BP<span class="sc">&gt;=</span><span class="dv">90</span>,<span class="dv">70</span> <span class="sc">&lt;=</span> BP <span class="sc">*</span> <span class="st">" &lt; 90"</span>, BP <span class="sc">&lt;</span> <span class="dv">70</span>)) <span class="sc">+</span></span>
+<span id="cb8-54"><a href="#cb8-54"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">"mt, 29 genes"</span>) <span class="sc">+</span></span>
+<span id="cb8-55"><a href="#cb8-55"></a>  <span class="fu">theme</span>(<span class="at">plot.title =</span> <span class="fu">element_text</span>(<span class="at">hjust =</span> <span class="fl">0.5</span>),</span>
+<span id="cb8-56"><a href="#cb8-56"></a>        <span class="at">legend.position =</span> <span class="st">"bottom"</span>) <span class="sc">+</span></span>
+<span id="cb8-57"><a href="#cb8-57"></a>  <span class="fu">geom_tree</span>(<span class="at">data =</span> d_ASTRAL) <span class="sc">+</span></span>
+<span id="cb8-58"><a href="#cb8-58"></a>  ggnewscale<span class="sc">::</span><span class="fu">new_scale_fill</span>() <span class="sc">+</span></span>
+<span id="cb8-59"><a href="#cb8-59"></a>  <span class="fu">geom_nodepoint</span>(<span class="at">data =</span> d_ASTRAL, <span class="fu">aes</span>(<span class="at">fill =</span> <span class="fu">cut</span>(<span class="fu">as.numeric</span>(label), <span class="fu">c</span>(<span class="dv">0</span>, <span class="fl">0.70</span>, <span class="fl">0.90</span>, <span class="fl">1.00</span>))), <span class="at">shape =</span> <span class="dv">21</span>, <span class="at">size =</span> <span class="dv">3</span>) <span class="sc">+</span></span>
+<span id="cb8-60"><a href="#cb8-60"></a>  <span class="fu">scale_fill_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">"white"</span>, <span class="st">"grey"</span>, <span class="st">"black"</span>), <span class="at">guide =</span> <span class="st">"none"</span>)</span>
+<span id="cb8-61"><a href="#cb8-61"></a></span>
+<span id="cb8-62"><a href="#cb8-62"></a><span class="co"># combine tip data</span></span>
+<span id="cb8-63"><a href="#cb8-63"></a>d_ML<span class="sc">$</span>x <span class="ot">=</span> <span class="fu">max</span>(d_ML<span class="sc">$</span>x) <span class="sc">+</span> <span class="fl">0.05</span></span>
+<span id="cb8-64"><a href="#cb8-64"></a>d_ASTRAL<span class="sc">$</span>x <span class="ot">=</span> d_ASTRAL<span class="sc">$</span>x <span class="sc">-</span> <span class="fl">0.0125</span></span>
+<span id="cb8-65"><a href="#cb8-65"></a>d_labels <span class="ot">=</span> dplyr<span class="sc">::</span><span class="fu">bind_rows</span>(d_ML, d_ASTRAL) <span class="sc">%&gt;%</span></span>
+<span id="cb8-66"><a href="#cb8-66"></a>  dplyr<span class="sc">::</span><span class="fu">filter</span>(isTip <span class="sc">==</span> <span class="cn">TRUE</span>)</span>
+<span id="cb8-67"><a href="#cb8-67"></a>d_labels<span class="sc">$</span>color_group <span class="ot">=</span> <span class="fu">ifelse</span>(</span>
+<span id="cb8-68"><a href="#cb8-68"></a>  d_labels<span class="sc">$</span>label <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">"Usp3"</span>, <span class="st">"Utort"</span>, <span class="st">"Umeri6"</span>, <span class="st">"Usp4"</span>, <span class="st">"Urigi3"</span>, <span class="st">"Ufene"</span>), <span class="st">"red"</span>, <span class="st">"grey"</span></span>
+<span id="cb8-69"><a href="#cb8-69"></a>)</span>
+<span id="cb8-70"><a href="#cb8-70"></a></span>
+<span id="cb8-71"><a href="#cb8-71"></a>p_combined <span class="sc">+</span></span>
+<span id="cb8-72"><a href="#cb8-72"></a>  <span class="fu">geom_tiplab</span>(<span class="at">color =</span> <span class="st">"antiquewhite3"</span>, <span class="at">size =</span> <span class="fl">2.75</span>, <span class="at">align =</span> <span class="cn">TRUE</span>, <span class="at">linetype =</span> <span class="st">"dotted"</span>, <span class="at">linesize =</span> <span class="fl">0.7</span>) <span class="sc">+</span></span>
+<span id="cb8-73"><a href="#cb8-73"></a>  <span class="fu">geom_tiplab</span>(<span class="at">color =</span> <span class="st">"black"</span>, <span class="at">size =</span> <span class="fl">2.75</span>, <span class="at">align =</span> <span class="cn">TRUE</span>, <span class="at">linetype =</span> <span class="st">"dotted"</span>, <span class="at">linesize =</span> <span class="dv">0</span>) <span class="sc">+</span></span>
+<span id="cb8-74"><a href="#cb8-74"></a>  <span class="fu">geom_line</span>(<span class="at">data =</span> d_labels, <span class="fu">aes</span>(x, y, <span class="at">group =</span> label, <span class="at">color =</span> color_group)) <span class="sc">+</span></span>
+<span id="cb8-75"><a href="#cb8-75"></a>  <span class="fu">scale_color_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">"grey"</span>, <span class="st">"red"</span>, <span class="st">"steelblue"</span>), <span class="at">guide =</span> <span class="cn">FALSE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="cp-and-mt-phylogeny-reconstruction_files/figure-html/unnamed-chunk-11-1.png" class="img-fluid figure-img" width="960"></p>
+<figcaption>Figure 3: mt species tree reconstruction</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<p>cp + mt good except for “Ufene” and “Usp4” position. cp cannot solve clade orders, while “species” refinition remane the same mt is a trainwreck</p>
 </section>
-<section id="prognosis-outcome" class="level3" data-number="2.2.4">
-<h3 data-number="2.2.4" class="anchored" data-anchor-id="prognosis-outcome"><span class="header-section-number">2.2.4</span> Prognosis Outcome</h3>
+<section id="distances-between-reconstructed-species-trees" class="level3" data-number="2.2.4">
+<h3 data-number="2.2.4" class="anchored" data-anchor-id="distances-between-reconstructed-species-trees"><span class="header-section-number">2.2.4</span> distances between reconstructed species trees</h3>
+</section>
+<section id="prognosis-outcome" class="level3" data-number="2.2.5">
+<h3 data-number="2.2.5" class="anchored" data-anchor-id="prognosis-outcome"><span class="header-section-number">2.2.5</span> Prognosis Outcome</h3>
 <p>Of the 887 petients with kidney tumor, 659 were alive at the time of the last check up, while 228 died. It appears that KIRC patients (48.7% dead) have worse prognosis than KIRP patients (17.9% dead), as observed in the previous comparisons. However, before drawing a formal conclusion, we should validate this observation at least in another independent cohort.</p>
 <p>Trees estimated by the ML and coalescent methods were well-supported and congruent, although slightly different topologies were recovered for different methods applied for different datasets (cp, mt and cp+mt) (Fig.1, Fig. S3). For the cp+mt tree, the topology of ML and coalescent trees are mostly congruent. The difference in the topology happens mostly within large species clades, e.g., clade contains U. australis or U. compressa genomes. The notorious difference is the position of U.fene vs.&nbsp;Ulva sp4. The results from the correlation between the common nodes and MAST% are highly concordant. They indicate that the topology of phylogenetic trees constructed by the two methods (ML and coalescence) and different datasets (cp, mt and cp+mt) is highly similar, except for the topology of the mt phylogenetic tree constructed by the ML method (The correlation between the common nodes) and the coalescent method (MAST%). Results from RF and KF matrices are more varied, but both also show the topology of species tree constructed using mt genomes ML is less similar compared to other species trees.</p>
 <p>Figure 1. (A). Consensus Ulva species tree based on the (49) concatenated chloroplast and mitochondrial genomes. The colors of circle at each node show the confident level of supporting values (bootstrap value for ML tree and posterior value for coalescence tree). Black circles indicate nodes with at least 95% support while grey circles indicate nodes with support values in the range of 75-95% and white circles indicate nodes with support values less than 75%. The blue lines show the identical topology between ML and coalescence tree while grey lines indicate difference in topology within species and red lines indicate difference in topology between species. (B). Four metrics, namely the correlation between the common nodes (common_nodes_corr), Robinson-Foulds (RF), Kuhner-Felsenstein (KF), and Maximum Agreement Subtree (MAST) used to assess the concordance of the Ulva species tree reconstructed from supermatrix and coalescence-based analyses obtained from the analyses of chloroplast genes, mitochondrial genes and chloroplast and mitochondrial genes. Higher values in correlation between the common_nodes_corr and MAST indicate the higher similarity between topology while lower values in correlation between the RF and KF indicate the higher similarity between topology.</p>
@@ -216,14 +756,106 @@ ul.task-list li input[type="checkbox"] {
 <p>From the combination of 2 to 10 selected genes, 1,013 species trees were generated (45 species trees for 2 genes, 120 species trees for 3 genes, 210 species trees for 4 genes, 252 species trees for 5 genes,210 species trees for 6 genes, 120 species trees for 7 genes, 45 species trees for 8 genes, 10 species trees for 9 genes and 1 species trees for 10 genes). After filtering for combinations containing both a cp and an mt marker, a total of 945 trees remained, comprising of 24 species trees for 2 genes, 96 species trees for 3 genes, 194 species trees for 4 genes, 246 species trees for 5 genes, 209 species trees for 6 genes, 120 species trees for 7 genes, 45 species trees for 8 genes, 10 species trees for 9 genes, and 1 species trees for 10 genes. For each combination, a representative combination with the highest the MAST% and the common node correlation are shown in the Table 2. The best combination to use for the development of Ulva organellar universal markers should be the combination with the highest values of the two indices and the lowest number of markers in the combination. The combination with five to eight markers has the highest value for the MAST% and the highest value for the common node correlation, but given the number of markers, it might pose more challenges for the development process later. The combination with four markers, psbD, psaA, cox1, cox2, which also has the highest value for the MAST% and has the value for the common node correlation slightly lower than the highest value, is chosen for the next step. This combination comprises of two cp genes, psbD, psaA, and two mt genes, cox1, cox2.</p>
 </section>
 </section>
-<section id="sec-lesson-learnt-cp-and-mt-phylogeny" class="level2" data-number="2.3">
-<h2 data-number="2.3" class="anchored" data-anchor-id="sec-lesson-learnt-cp-and-mt-phylogeny"><span class="header-section-number">2.3</span> Lessons Learnt</h2>
+<section id="sec-lesson-learnt-cp-and-mt-phylogeny-reconstruction" class="level2" data-number="2.3">
+<h2 data-number="2.3" class="anchored" data-anchor-id="sec-lesson-learnt-cp-and-mt-phylogeny-reconstruction"><span class="header-section-number">2.3</span> Lessons Learnt</h2>
 <p>So far, we have learnt:</p>
 <ul>
 <li>TCGA is a public resource with a wide collection of samples from cancer biopsies from patients affected by 32 different cancer types.</li>
 <li>TCGA provides abundant molecular and clinical information for both biopsies and patients and it allows for patient stratification and therapeutic target discovery.</li>
 <li>Cancers with kidneys as primary sites are the third most abundant samples available in TCGA (n = 1,030 samples), after breast (n = 1,246) and lung biopsies (n = 1,156), and provides an excellent yet challenging case-study.</li>
 </ul>
+</section>
+<section id="session-information" class="level2" data-number="2.4">
+<h2 data-number="2.4" class="anchored" data-anchor-id="session-information"><span class="header-section-number">2.4</span> Session Information</h2>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-1-contents" aria-controls="callout-1" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Note
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-1" class="callout-1-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>R version 4.3.2 (2023-10-31)
+Platform: x86_64-conda-linux-gnu (64-bit)
+Running under: openSUSE Tumbleweed
+
+Matrix products: default
+BLAS/LAPACK: /home/andrea/miniforge3/envs/moai/lib/libmkl_rt.so.2;  LAPACK version 3.9.0
+
+locale:
+ [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C              
+ [3] LC_TIME=it_IT.UTF-8        LC_COLLATE=en_US.UTF-8    
+ [5] LC_MONETARY=en_US.UTF-8    LC_MESSAGES=en_US.UTF-8   
+ [7] LC_PAPER=en_US.UTF-8       LC_NAME=C                 
+ [9] LC_ADDRESS=C               LC_TELEPHONE=C            
+[11] LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C       
+
+time zone: Europe/Brussels
+tzcode source: system (glibc)
+
+attached base packages:
+ [1] parallel  stats4    grid      stats     graphics  grDevices utils    
+ [8] datasets  methods   base     
+
+other attached packages:
+ [1] treeio_1.26.0         TreeDist_2.9.2        stringr_1.5.1        
+ [4] scales_1.3.0          RColorBrewer_1.1-3    reshape_0.8.9        
+ [7] phytools_2.4-4        maps_3.4.2.1          phylogram_2.1.0      
+[10] phangorn_2.12.1       gridExtra_2.3         ggtree_3.10.1        
+[13] ggplot2_3.5.1         ggdist_3.3.2          doSNOW_1.0.20        
+[16] snow_0.4-4            iterators_1.0.14      foreach_1.5.2        
+[19] dendextend_1.19.0     DECIPHER_2.30.0       RSQLite_2.3.9        
+[22] Biostrings_2.70.3     GenomeInfoDb_1.38.8   XVector_0.42.0       
+[25] IRanges_2.36.0        S4Vectors_0.40.2      BiocGenerics_0.48.1  
+[28] corrplot_0.95         ComplexHeatmap_2.18.0 circlize_0.4.16      
+[31] ape_5.8-1            
+
+loaded via a namespace (and not attached):
+  [1] jsonlite_1.8.9          shape_1.4.6.1           magrittr_2.0.3         
+  [4] farver_2.1.2            rmarkdown_2.29          GlobalOptions_0.1.2    
+  [7] fs_1.6.5                zlibbioc_1.48.2         vctrs_0.6.5            
+ [10] memoise_2.0.1           RCurl_1.98-1.16         htmltools_0.5.8.1      
+ [13] distributional_0.5.0    DEoptim_2.2-8           gridGraphics_0.5-1     
+ [16] htmlwidgets_1.6.4       plyr_1.8.9              cachem_1.1.0           
+ [19] igraph_2.1.4            mime_0.12               lifecycle_1.0.4        
+ [22] pkgconfig_2.0.3         Matrix_1.6-5            R6_2.5.1               
+ [25] fastmap_1.2.0           GenomeInfoDbData_1.2.11 rbibutils_2.3          
+ [28] shiny_1.10.0            clue_0.3-66             digest_0.6.37          
+ [31] numDeriv_2016.8-1.1     aplot_0.2.4             ggnewscale_0.5.0       
+ [34] colorspace_2.1-1        patchwork_1.3.0         labeling_0.4.3         
+ [37] clusterGeneration_1.3.8 compiler_4.3.2          bit64_4.6.0-1          
+ [40] withr_3.0.2             doParallel_1.0.17       optimParallel_1.0-2    
+ [43] viridis_0.6.5           DBI_1.2.3               R.utils_2.12.3         
+ [46] MASS_7.3-60.0.1         rjson_0.2.23            scatterplot3d_0.3-44   
+ [49] tools_4.3.2             httpuv_1.6.15           TreeTools_1.13.0       
+ [52] R.oo_1.27.0             glue_1.8.0              quadprog_1.5-8         
+ [55] nlme_3.1-167            R.cache_0.16.0          promises_1.3.2         
+ [58] cluster_2.1.8           PlotTools_0.3.1         generics_0.1.3         
+ [61] gtable_0.3.6            R.methodsS3_1.8.2       tidyr_1.3.1            
+ [64] pillar_1.10.1           yulab.utils_0.2.0       later_1.4.1            
+ [67] dplyr_1.1.4             lattice_0.22-6          bit_4.5.0.1            
+ [70] tidyselect_1.2.1        knitr_1.49              xfun_0.50              
+ [73] expm_1.0-0              matrixStats_1.5.0       stringi_1.8.4          
+ [76] lazyeval_0.2.2          ggfun_0.1.8             yaml_2.3.10            
+ [79] evaluate_1.0.3          codetools_0.2-20        tibble_3.2.1           
+ [82] ggplotify_0.1.2         cli_3.6.3               xtable_1.8-4           
+ [85] Rdpack_2.6.2            munsell_0.5.1           Rcpp_1.0.14            
+ [88] coda_0.19-4.1           png_0.1-8               blob_1.2.4             
+ [91] bitops_1.0-9            viridisLite_0.4.2       tidytree_0.4.6         
+ [94] purrr_1.0.2             crayon_1.5.3            combinat_0.0-8         
+ [97] GetoptLong_1.0.5        rlang_1.1.5             fastmatch_1.1-6        
+[100] mnormt_2.1.1            shinyjs_2.1.0          </code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
 
 
 </section>
@@ -651,8 +1283,8 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="./cp-and-mt-dataset-overview.html" class="pagination-link" aria-label="Species tree reconstruction from organellar genomes">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">Species tree reconstruction from organellar genomes</span></span>
+      <a href="./cp-and-mt-dataset-overview.html" class="pagination-link" aria-label="Ulva organellar genomes retrieval and preparation">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">Ulva organellar genomes retrieval and preparation</span></span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">

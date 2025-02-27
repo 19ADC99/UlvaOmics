@@ -1,5 +1,27 @@
 # Species tree reconstruction from organellar genomes
 
+
+```{css, echo=FALSE}
+
+pre {
+  max-height: 300px;
+}
+
+div.sourceCode {
+  overflow: scroll;
+}
+
+.bash-code {
+  font-style: italic;
+}
+
+.r-code {
+  font-style: italic;
+}
+
+```
+
+
 ```{r, echo=FALSE, include=FALSE}
 # load required libraries
 up_packages = c("ape", "circlize", "ComplexHeatmap", "corrplot", "DECIPHER", "dendextend", "doSNOW", "foreach",
@@ -39,38 +61,191 @@ and we will evaluate the similarities and differences between the reconstructued
 ### Maximum Likelihodd species tree reconstruction
 
 
-For the ML approach, the first step consist in concatenating all alignments into a single concatenated file.
-We will use [catfasta2phyml](https://github.com/nylander/catfasta2phyml), which also generates a nexus file that is required from IQ-TREE with the coordinates of each gene in the alignment. This allow us to partion the alignment to the gene level and apply different evolution models to different genes. Even if for each organelle all genes are inherited in linkage, the same is not true for the chloroplast and the mitochondrial genome. Moreover, this would allow to model different signals across genes that are under different evolutionary pressures.
 
+
+For the ML approach, the first step consist in concatenating all alignments into a single concatenated file. We will use [catfasta2phyml](https://github.com/nylander/catfasta2phyml) to concatenate the nucleotidic sequences.
+
+We want to apply different 
+which also generates a nexus file that is required from IQ-TREE with the coordinates of each gene in the alignment. This allow us to partion the alignment to the gene level and apply different evolution models to different genes. Even if for each organelle all genes are inherited in linkage, the same is not true for the chloroplast and the mitochondrial genome. Moreover, this would allow to model different signals across genes that are under different evolutionary pressures.
+
+
+SINGLE GENE TREE
+
+
+```{bash}
+#| echo: TRUE
+#| class.source: bash-code
+#| eval: FALSE
+#| result: hide
+#| code-fold: FALSE
+#| message: FALSE
+#| warning: FALSE
+
+# CP gene wise Maximum Likelihood phylogeny
+mkdir ./03_cp_singleGene_ML && cd ./03_cp_singleGene_ML
+ls ../02_cp_CDS_align/*.fa \
+  | xargs -P 8 -n 6 -I {} bash -c \
+  ‘~/bin/iqtree-2.2.0-Linux/bin/iqtree2 -s {} \
+    -st DNA \
+    -pre $(basename {} .fa) 
+    -nt 6 \
+    -wbt -bb 1000 -alrt 1000 \
+    -m MFP+MERGE’
+
+# MT gene wise Maximum Likelihood phylogeny
+cd ..
+mkdir ./03_mt_singleGene_ML && cd ./03_mt_singleGene_ML
+ls ../02_mt_CDS_align/*.fa \
+  | xargs -P 8 -n 6 -I {} bash -c \
+  ‘~/bin/iqtree-2.2.0-Linux/bin/iqtree2 -s {} \
+    -st DNA \
+    -pre $(basename {} .fa) 
+    -nt 6 \
+    -wbt -bb 1000 -alrt 1000 \
+    -m MFP+MERGE’
+cd ..
+
+```
+
+
+Now we can create a nexus file with the best model predicted for each gene. This provides the best model for each partition (i.e.: gene) for the concatenated ML tree.
 
 
 ```{bash}
 #| echo: TRUE
 #| eval: FALSE
+#| class.source: bash-code
 #| result: hide
-#| code-fold: TRUE
+#| code-fold: FALSE
 #| message: FALSE
 #| warning: FALSE
 
-# concatenate alignments
-perl ~/bin/catfasta2phyml.pl \
-  --fasta \
-  --concatenate 07_nt_aln_ready/*.fa \
-  > 08_concatenated_ML/clstr.all.concat.nt.align.fa
+# create nexus file with best models CP and MT 
+for ORGANEL in cp mt; do 
 
-# ML analysis on concatenated alignment
-~/bin/iqtree-1.6.8-Linux/bin/iqtree \
-  -s clstr.all.concat.nt.align.fa \
-  -st CODON \
-  -pre clstr.all.concat.nt.align \
-  -nt 52 \
-  -wbt \
-  -bb 1000 \
-  -alrt 1000 \
-  -m MG+F1X4
+  k=1
+  START=0
+  
+  echo "#nexus" > ./04_"${ORGANEL}"_concat_ML/head_noscaffold.nex
+  echo "begin sets;" >> ./04_"${ORGANEL}"_concat_ML/head_noscaffold.nex
+  echo -n "charpartition mine = " >> ./04_"${ORGANEL}"_concat_ML/tail_noscaffold.nex
+  
+  for file in ./02_"${ORGANEL}"_CDS_alin/*.fa; do
+    LEN=$(awk '/^>/ {if (seqlen){print seqlen}; print ;seqlen=0;next; } { seqlen += length($0)}END{print seqlen}' $file | sed -n 2,2p)
+    echo "charset part$k = $(($START+1))-$(($START+$LEN));" >> ./04_"${ORGANEL}"_concat_ML/head_noscaffold.nex
+    START=$(($START+$LEN))
+    MODEL=$(grep "Best-fit model" ./02_"${ORGANEL}"_CDS_alin/$(basename $file .fa).log \
+      | sed 's/Best-fit model: //g' \
+      | sed 's/ chosen according to BIC//g')
+    echo -n "$MODEL:part$k ," >> ./04_"${ORGANEL}"_concat_ML/tail_noscaffold.nex
+    k=$((k+1))
+  done
+  
+  echo ";" >> ./04_"${ORGANEL}"_concat_ML/tail_noscaffold.nex
+  echo "end;" >> ./04_"${ORGANEL}"_concat_ML/tail_noscaffold.nex
+  
+  cat ./04_"${ORGANEL}"_concat_ML/head_noscaffold.nex \
+    ./04_"${ORGANEL}"_concat_ML/tail_noscaffold.nex \
+    > ./04_"${ORGANEL}"_concat_ML/"${ORGANEL}"_allgenes_concat.nex
+    
+  rm ./04_"${ORGANEL}"_concat_ML/head_noscaffold.nex ./04_"${ORGANEL}"_concat_ML/tail_noscaffold.nex
+  sed -i 's/ ,;/;/g' ./04_"${ORGANEL}"_concat_ML/"${ORGANEL}"_allgenes_concat.nex
+
+done
+
+# create a nexus file for CP+MT concatenated alignment
+k=1
+START=0
+
+echo "#nexus" > ./06_cp_mt_concat_ML/head_noscaffold.nex
+echo "begin sets;" >> ./06_cp_mt_concat_ML/head_noscaffold.nex
+echo -n "charpartition mine = " >> ./06_cp_mt_concat_ML/tail_noscaffold.nex
+
+for file in ./02_cp_CDS_alin/*.fa ./02_mt_CDS_alin/*.fa; do
+  LEN=$(awk '/^>/ {if (seqlen){print seqlen}; print ;seqlen=0;next; } { seqlen += length($0)}END{print seqlen}' $file | sed -n 2,2p)
+  echo "charset part$k = $(($START+1))-$(($START+$LEN));" >> ./06_cp_mt_concat_ML/head_noscaffold.nex
+  START=$(($START+$LEN))
+  MODEL=$(grep "Best-fit model" ./02_*_CDS_alin/$(basename $file .fa).log \
+    | sed 's/Best-fit model: //g' \
+    | sed 's/ chosen according to BIC//g')
+  echo -n "$MODEL:part$k ," >> ./06_cp_mt_concat_ML/tail_noscaffold.nex
+  k=$((k+1))
+done
+
+echo ";" >> ./06_cp_mt_concat_ML/tail_noscaffold.nex
+echo "end;" >> ./06_cp_mt_concat_ML/tail_noscaffold.nex
+
+cat ./06_cp_mt_concat_ML/head_noscaffold.nex \
+  ./06_cp_mt_concat_ML/tail_noscaffold.nex \
+  > ./06_cp_mt_concat_ML/cp_mt_allgenes_concat.nex
+  
+rm ./06_cp_mt_concat_ML/head_noscaffold.nex ./06_cp_mt_concat_ML/tail_noscaffold.nex
+sed -i 's/ ,;/;/g' ./06_cp_mt_concat_ML/cp_mt_allgenes_concat.nex
 
 ```
 
+We will use [catfasta2phyml](https://github.com/nylander/catfasta2phyml) to concatenate the nucleotidic sequences. 
+
+
+```{bash}
+#| echo: TRUE
+#| eval: FALSE
+#| class.source: bash-code
+#| result: hide
+#| code-fold: FALSE
+#| message: FALSE
+#| warning: FALSE
+
+# concatenate CP alignments
+perl ~/bin/catfasta2phyml.pl \
+  --fasta \
+  --concatenate 02_cp_CDS_align/*.fa \
+  > 08_concatenated_ML/clstr.all.concat.nt.align.fa
+  
+# concatenate MT alignments
+perl ~/bin/catfasta2phyml.pl \
+  --fasta \
+  --concatenate 02_mt_CDS_align/*.fa \
+  > 08_concatenated_ML/clstr.all.concat.nt.align.fa
+
+# concatenate CP+MT alignments
+perl ~/bin/catfasta2phyml.pl \
+  --fasta \
+  --concatenate 07_nt_aln_ready/*.fa \
+  > 06_cp_mt_concat_ML/clstr.all.concat.nt.align.fa
+
+# ML analysis on concatenated alignment
+cd ./04_cp_concat_ML/
+~/bin/iqtree-2.2.0-Linux/bin/iqtree2 \
+  -s cp_allgenes_concat.fa \
+  -st DNA \
+  -pre cp_allgenes_concat \
+  -p cp_allgenes_concat.nex \
+  --sampling GENESITE \
+  -nt 64 \
+  -wbt -bb 1000 -alrt 1000 
+
+cd ../04_mt_concat_ML/
+~/bin/iqtree-2.2.0-Linux/bin/iqtree2 \
+  -s mt_allgenes_concat.fa \
+  -st DNA \
+  -pre mt_allgenes_concat \
+  -p mt_allgenes_concat.nex \
+  --sampling GENESITE \
+  -nt 64 \
+  -wbt -bb 1000 -alrt 1000 
+
+cd ../06_cp_mt_concat_ML/
+~/bin/iqtree-2.2.0-Linux/bin/iqtree2 \
+  -s cp_mt_allgenes_concat.fa \
+  -st DNA \
+  -pre cp_mt_allgenes_concat \
+  -p cp_mt_allgenes_concat.nex \
+  --sampling GENESITE \
+  -nt 64 \
+  -wbt -bb 1000 -alrt 1000 
+  
+```
 
 
 
@@ -85,7 +260,7 @@ For the coalescence-based approach, first we need to compute the single-gene ML 
 #| echo: TRUE
 #| eval: FALSE
 #| result: hide
-#| code-fold: TRUE
+#| code-fold: FALSE
 #| message: FALSE
 #| warning: FALSE
 
@@ -100,184 +275,452 @@ For the coalescence-based approach, first we need to compute the single-gene ML 
 
 ```{bash, echo=FALSE, include=FALSE, eval=FALSE}
 
-
-
-### PHYLOGENY
-###
-###
-
-# rename sequences
-for file in *.fasta; do mv "$(Bates et al)" $(echo $file | sed 's/ alignment.*//g').fa; done
-
-
-# gene wise Maximum Likelihood phylogeny - CP
-for file in ../cp_clean_align/*.fa; do
-  ~/bin/iqtree-2.2.0-Linux/bin/iqtree2 -s $file \
-    -st DNA \
-    -pre $(basename $file .fa) \
-    -nt 8 \
-    -wbt -bb 1000 -alrt 1000 \
-    -m MFP+MERGE’;
-done
-
-# gene wise Maximum Likelihood phylogeny - MT
-ls ../mt_clean_align/*.fa \
-  | grep -v Mt \
-  | xargs -P 16 -n 6 -I {} bash -c \
-  ‘/mnt/wgs-runs/REFERENCE/bin/iqtree-2.2.0-Linux/bin/iqtree2 -s {} \
-    -st DNA \
-    -pre $(basename {} .fa) 
-    -nt 6 \
-    -wbt -bb 1000 -alrt 1000 \
-    -m MFP+MERGE’
-
-
-
-
-### create nexus file with best models CP
-k=1
-START=0
-echo "#nexus" >> cp_concat_allgenes_ML/head_noscaffold.nex
-echo "begin sets;" >> cp_concat_allgenes_ML/head_noscaffold.nex
-echo -n "charpartition mine = " >> cp_concat_allgenes_ML/tail_noscaffold.nex
-for file in cp_clean_align/*.fa; do
-  LEN=$(awk '/^>/ {if (seqlen){print seqlen}; print ;seqlen=0;next; } \
-    { seqlen += length($0)}END{print seqlen}' \
-    $file | sed -n 2,2p)
-  echo "charset part$k = $(($START+1))-$(($START+$LEN));" \
-    >> cp_concat_allgenes_ML/head_noscaffold.nex
-  START=$(($START+$LEN))
-  MODEL=$(grep "Best-fit model" cp_gene_wise_ML/$(basename $file .fa).log \
-    | sed 's/Best-fit model: //g' | sed 's/ chosen according to BIC//g')
-  echo -n "$MODEL:part$k ," \
-    >> cp_concat_allgenes_ML/tail_noscaffold.nex
-  k=$((k+1))
-done
-echo ";" >> cp_concat_allgenes_ML/tail_noscaffold.nex
-echo "end;" >> cp_concat_allgenes_ML/tail_noscaffold.nex
-cat cp_concat_allgenes_ML/head_noscaffold.nex \
-  cp_concat_allgenes_ML/tail_noscaffold.nex \
-  > cp_concat_allgenes_ML/cp_allgenes_concat.nex
-rm cp_concat_allgenes_ML/head_noscaffold.nex cp_concat_allgenes_ML/tail_noscaffold.nex
-sed -i 's/ ,;/;/g' cp_concat_allgenes_ML/cp_concat_allgenes_ML/cp_allgenes_concat.nex
-
-#### run full ML phylogeny
-../bin/iqtree-2.2.0-Linux/bin/iqtree2 -s cp_allgenes_concat.fa \
-    -st DNA \
-    -pre cp_allgenes_concat \
-    -p  cp_allgenes_concat.nex \
-    --sampling GENESITE \
-    -nt 96 \
-    -wbt -bb 1000 -alrt 1000 
-
-
-
-
-k=1; START=0; echo "#nexus" >> mt_concat_allgenes_ML/head_noscaffold.nex; echo "begin sets;" >> mt_concat_allgenes_ML/head_noscaffold.nex; echo -n "charpartition mine = " >> mt_concat_allgenes_ML/tail_noscaffold.nex; for file in mt_clean_align/*.fa; do LEN=$(awk '/^>/ {if (seqlen){print seqlen}; print ;seqlen=0;next; } { seqlen += length($0)}END{print seqlen} ' $file | sed -n 2,2p); echo "charset part$k = $(($START+1))-$(($START+$LEN));" >> mt_concat_allgenes_ML/head_noscaffold.nex; START=$(($START+$LEN)); MODEL=$(grep "Best-fit model" mt_gene_wise_ML/$(basename $file .fa).log | sed 's/Best-fit model: //g' | sed 's/ chosen according to BIC//g'); echo -n "$MODEL:part$k ," >> mt_concat_allgenes_ML/tail_noscaffold.nex; k=$((k+1)); done
-echo ";" >> mt_concat_allgenes_ML/tail_noscaffold.nex
-echo "end;" >> mt_concat_allgenes_ML/tail_noscaffold.nex
-cat mt_concat_allgenes_ML/head_noscaffold.nex \
-  mt_concat_allgenes_ML/tail_noscaffold.nex \
-  > mt_concat_allgenes_ML/mt_allgenes_concat.nex
-rm mt_concat_allgenes_ML/head_noscaffold.nex mt_concat_allgenes_ML/tail_noscaffold.nex
-sed -i 's/ ,;/;/g' mt_concat_allgenes_ML/mt_allgenes_concat.nex
-
-
-../bin/iqtree-2.2.0-Linux/bin/iqtree2 -s mt_allgenes_concat.fa  -st DNA -pre mt_allgenes_concat  -p  mt_allgenes_concat.nex  --sampling GENESITE  -nt 96 -wbt -bb 1000 -alrt 1000 
-
-
-
-
-
-
-
-
-
-
-
-### ASTRAL TO BUILD COALESCENCE BASED SPECIES TREE
-### it takes single gene ML and the corresponding boot strap trees generate byt iqtree
-
-
 # prepare files
-cat cp_gene_wise_ML/*.contree > cp_coalescence/cp_allgenes_single.tre
-cat mt_gene_wise_ML/*.contree > mt_coalescence/mt_allgenes_single.tre
-cat cp_gene_wise_ML/*.contree mt_gene_wise_ML/*.contree > cp_mt_coalescence/cp_mt_allgenes_single.tre
+cat 03_cp_singleGene_ML/*.contree > 05_cp_ASTRAL/cp_genetrees.tre
+cat 03_mt_singleGene_ML/*.contree > 05_mt_ASTRAL/mt_genetrees.tre
+cat 03_cp_singleGene_ML/*.contree 03_mt_singleGene_ML/*.contree > 07_cp_mt_ASTRAL/cp_mt_genetrees.tre
 
-for file in cp_gene_wise_ML/*.ufboot; do echo $file | sed ‘s#^#/mnt/wgs-runs/REFERENCE/#’; done > cp_coalescence/cp_allgenes_single.BS
-for file in mt_gene_wise_ML/*.ufboot; do echo $file | sed ‘s#^#/mnt/wgs-runs/REFERENCE/#’; done > mt_coalescence/mt_allgenes_single.BS
-for file in cp_gene_wise_ML/*.ufboot mt_gene_wise_ML/*.ufboot; do echo $file | sed ‘s#^#/mnt/wgs-runs/REFERENCE/#’; done > cp_mt_coalescence/cp_mt_allgenes_single.BS
+for file in 03_cp_singleGene_ML/*.ufboot; do
+  echo $file | sed ‘s#^#03_cp_singleGene_ML/#’;
+done > 05_cp_ASTRAL/cp_bootstrap_trees.BS
+
+for file in 03_mt_singleGene_ML/*.ufboot; do
+  echo $file | sed ‘s#^#03_mt_singleGene_ML/#’;
+done > 05_mt_ASTRAL/mt_bootstrap_trees.BS
+
+for file in 03_cp_singleGene_ML/*.ufboot 03_mt_singleGene_ML/*.ufboot; do
+  echo $file | sed ‘s#^#03_cp_singleGene_ML/#’ | sed ‘s#^#03_mt_singleGene_ML/#’;
+done > 07_cp_mt_ASTRAL/cp_mt_bootstrap_trees.BS
 
 
-
+# rum cp coalescence-based tree
 java -Xmx24000M \
--jar bin/Astral/astral.5.7.8.jar \
---bootstraps cp_coalescence/cp_allgenes_single.BS \
---gene-resampling \
--r 100 \
---input cp_coalescence/cp_allgenes_single.tre \
---output cp_coalescence/cp_allgenes_single.astral.tre 2> \
-cp_coalescence/cp_allgenes_single.astral.log
-tail -n 1 cp_coalescence/cp_allgenes_single.astral.tre > \
-cp_coalescence/cp_allgenes_single.astral.contre
-
-java -Xmx24000M -jar bin/Astral/astral.5.7.8.jar --bootstraps cp_coalescence/cp_allgenes_single.BS --gene-resampling -r 100 --input cp_coalescence/cp_allgenes_single.tre --output cp_coalescence/cp_allgenes_single.astral.tre 2> cp_coalescence/cp_allgenes_single.astral.log
-
-tail -n 1 cp_coalescence/cp_allgenes_single.astral.tre > cp_coalescence/cp_allgenes_single.astral.contre
+  -jar bin/Astral/astral.5.7.8.jar \
+  --bootstraps 05_cp_ASTRAL/cp_bootstrap_trees.BS \
+  --gene-resampling \
+  -r 100 \
+  --input 05_cp_ASTRAL/cp_genetrees.tre \
+  --output 05_cp_ASTRAL/cp_genetrees.coalescence.tre \
+  2> 05_cp_ASTRAL/cp_genetrees.coalescence.tre
+  
+tail -n 1 05_cp_ASTRAL/cp_genetrees.coalescence.tre \
+  > 05_cp_ASTRAL/cp_genetrees.coalescence.tre
 
 
 
-
-java -Xmx24000M -jar bin/Astral/astral.5.7.8.jar --bootstraps mt_coalescence/mt_allgenes_single.BS --gene-resampling -r 100 --input mt_coalescence/mt_allgenes_single.tre --output mt_coalescence/mt_allgenes_single.astral.tre 2> mt_coalescence/mt_allgenes_single.astral.log
-
-tail -n 1 mt_coalescence/mt_allgenes_single.astral.tre > mt_coalescence/mt_allgenes_single.astral.contre
-
-
-
-java -Xmx24000M -jar bin/Astral/astral.5.7.8.jar --bootstraps cp_mt_coalescence/cp_mt_allgenes_single.BS --gene-resampling -r 100 --input cp_mt_coalescence/cp_mt_allgenes_single.tre --output cp_mt_coalescence/cp_mt_allgenes_single.astral.tre 2> cp_mt_coalescence/cp_mt_allgenes_single.astral.log
-
-tail -n 1 cp_mt_coalescence/cp_mt_allgenes_single.astral.tre > cp_mt_coalescence/cp_mt_allgenes_single.astral.contre
-
-
-
-
-
-merge cp with mt
-
- bin/seqkit concat --full cp_concat_allgenes_ML/cp_allgenes_concat.fa mt_concat_allgenes_ML/mt_allgenes_concat.fa > cp_mt_concat_allgenes_ML/cp_mt_allgenes_concat.fa
+# rum mt coalescence-based tree
+java -Xmx24000M \
+  -jar bin/Astral/astral.5.7.8.jar \
+  --bootstraps 05_mt_ASTRAL/mt_bootstrap_trees.BS \
+  --gene-resampling \
+  -r 100 \
+  --input 05_mt_ASTRAL/mt_genetrees.tre \
+  --output 05_mt_ASTRAL/mt_genetrees.coalescence.tre \
+  2> 05_mt_ASTRAL/mt_genetrees.coalescence.tre
+  
+tail -n 1 05_mt_ASTRAL/mt_genetrees.coalescence.tre \
+  > 05_mt_ASTRAL/mt_genetrees.coalescence.tre
 
 
-
-
-
-
-
-		python3.10 combinatorial_ML_phylogeny.py --infolder "ANALYSES_AND_RESULTS/
-09_combinatorial_phylogeny/00_cp_genes/,ANALYSES_AND_RESULTS/09_combinatorial_phylogeny/00_mt_genes/" --names "CP,MT" --iqtree /home/Andrea/Desktop/ANALYSES_AND_RESULTS/bin/iqtree-2.2.0-Linux/bin/iqtree2 --n_genes 10 --outdir /home/Andrea/Desktop/CP_MT/ANALYSES_AND_RESULTS/09_combinatorial_phylogeny/
+# rum cp + mt coalescence-based tree
+java -Xmx24000M \
+  -jar bin/Astral/astral.5.7.8.jar \
+  --bootstraps 07_cp_mt_ASTRAL/cp_mt_bootstrap_trees.BS \
+  --gene-resampling \
+  -r 100 \
+  --input 07_cp_mt_ASTRAL/cp_mt_genetrees.tre \
+  --output 07_cp_mt_ASTRAL/cp_mt_genetrees.coalescence.tre \
+  2> 07_cp_mt_ASTRAL/cp_mt_genetrees.coalescence.tre
+  
+tail -n 1 07_cp_mt_ASTRAL/cp_mt_genetrees.coalescence.tre \
+  > 07_cp_mt_ASTRAL/cp_mt_genetrees.coalescence.tre
 
 
 ```
+
+
+
+
+
+### Species trees comparison and reconciliation
+
+
+
+Let's plot the Maximum Likelihood trees we have just reconstructed!
+
+First we import the trees in R.
 
 
 ```{r}
-#| echo: FALSE
+#| echo: TRUE
+#| eval: TRUE
+#| result: hide
+#| code-fold: FALSE
 #| message: FALSE
 #| warning: FALSE
-#| fig.height: 9
-#| fig.cap: "Figure 4: UMAP RNAseq"
+
+# phylogenetic trees placeholder
+phylogenetic_trees = list(
+  "cp_ML" = list("type" = "ML", "tree" = NA, "root" = NA, "dendro" = NA),
+  "cp_ASTRAL" = list("type" = "coalescent", "tree" = NA, "root" = NA, "dendro" = NA),
+  "mt_ML" = list("type" = "ML", "tree" = NA, "root" = NA, "dendro" = NA),
+  "mt_ASTRAL" = list("type" = "coalescent", "tree" = NA, "root" = NA, "dendro" = NA),
+  "cp_mt_ML" = list("type" = "ML", "tree" = NA, "root" = NA, "dendro" = NA),
+  "cp_mt_ASTRAL" = list("type" = "coalescent", "tree" = NA, "root" = NA, "dendro" = NA)
+)
+
+# read ML concatenated trees
+phylogenetic_trees[["cp_ML"]][["tree"]] = ape::read.tree(file = "./data/cp_allgenes_concat.contree")
+phylogenetic_trees[["mt_ML"]][["tree"]] = ape::read.tree(file = "./data/mt_allgenes_concat.contree")
+phylogenetic_trees[["cp_mt_ML"]][["tree"]] = ape::read.tree(file = "./data/cp_mt_allgenes_concat.contree")
+
+# read coalescence-based trees
+phylogenetic_trees[["cp_ASTRAL"]][["tree"]] = ape::read.tree(file = "./data/cp_genetrees.coalescence.tre")
+phylogenetic_trees[["mt_ASTRAL"]][["tree"]] = ape::read.tree(file = "./data/mt_genetrees.coalescence.tre")
+phylogenetic_trees[["cp_mt_ASTRAL"]][["tree"]] = ape::read.tree(file = "./data/cp_mt_genetrees.coalescence.tre")
+
+# reroot trees
+for(i in 1:length(phylogenetic_trees)){
+  
+  # get root position
+  phylogenetic_trees[[i]][["root"]] = tidytree::MRCA(phylogenetic_trees[[i]][["tree"]], "Pakin", "Oviri")
+  
+  # reroot set branch length NaN to 0 in coalescent trees and root length to 0.01 in ML trees
+  if(phylogenetic_trees[[i]][["type"]] == "coalescent"){
+    phylogenetic_trees[[i]][["tree"]] = treeio::root(phylogenetic_trees[[i]][["tree"]], node = phylogenetic_trees[[i]][["root"]], resolve.root = TRUE)
+    phylogenetic_trees[[i]][["tree"]]$edge.length[is.na(phylogenetic_trees[[i]][["tree"]]$edge.length)] = 0
+    phylogenetic_trees[[i]][["tree"]]$node.label = ifelse(phylogenetic_trees[[i]][["tree"]]$node.label == "Root", "1", phylogenetic_trees[[i]][["tree"]]$node.label)
+    phylogenetic_trees[[i]][["tree"]]$node.label = ifelse(phylogenetic_trees[[i]][["tree"]]$node.label == "", "1", phylogenetic_trees[[i]][["tree"]]$node.label)
+  } else {
+    phylogenetic_trees[[i]][["tree"]] = treeio::root(phylogenetic_trees[[i]][["tree"]], node = phylogenetic_trees[[i]][["root"]] + 1, resolve.root = TRUE)
+    phylogenetic_trees[[i]][["tree"]]$edge.length[which(phylogenetic_trees[[i]][["tree"]]$edge.length == 0)] = 0.1
+    phylogenetic_trees[[i]][["tree"]]$node.label = ifelse(phylogenetic_trees[[i]][["tree"]]$node.label == "Root", "100", phylogenetic_trees[[i]][["tree"]]$node.label)
+    phylogenetic_trees[[i]][["tree"]]$node.label = ifelse(phylogenetic_trees[[i]][["tree"]]$node.label == "", "100", phylogenetic_trees[[i]][["tree"]]$node.label)
+  }
+  
+  # sort trees in descending order
+  phylogenetic_trees[[i]][["tree"]] = ape::ladderize(phylogenetic_trees[[i]][["tree"]], right = TRUE)
+  
+  # set node label to numeric (BS and coalescence support)
+  phylogenetic_trees[[i]][["tree"]]$node.label = as.numeric(phylogenetic_trees[[i]][["tree"]]$node.label)
+  
+}
+
+```
+
+
+Lets now plot a tanglegram: we will have the ML tree and the ASTRAL tree facing each other, and lines connecting the corresponding position of the same alga isolate. This will allow us to compare the two three structure, as well as how much concordant are the phylogenetic reconstructions.
+
+We will do this for the cp + mt, cp only and mt only gene sets.
+
+
+::: panel-tabset
+
+#### Chloroplast + Mitochondrial ML tree
 
 
 
-      
+```{r}
+#| echo: TRUE
+#| result: hide
+#| code-fold: FALSE
+#| message: FALSE
+#| warning: FALSE
+#| fig.height: 6
+#| fig.cap: "Figure 1: cp + mt species tree reconstruction"
+
+
+ML_tree = phylogenetic_trees[["cp_mt_ML"]][["tree"]]
+ML_tree = groupClade(ML_tree, 53)
+
+# prep ML tree
+p_ML = ggtree(ML_tree, aes(linetype = group)) +
+  scale_linetype_discrete(guide = "none")
+
+p_ML$data[p_ML$data$node %in% c(1, 2), "x"] = mean(p_ML$data$x)
+p_ML$data[p_ML$data$node %in% c(53), "x"] = mean(p_ML$data$x)/2
+
+p_ML = ggtree::rotate(p_ML, 52) 
+
+# prep ASTRAL tree
+ASTRAL_tree = phylogenetic_trees[["cp_mt_ASTRAL"]][["tree"]]
+ASTRAL_tree = groupClade(ASTRAL_tree, 101)
+
+p_ASTRAL = ggtree(ASTRAL_tree, aes(linetype = group)) +
+  scale_linetype_discrete(guide = "none")
+
+p_ASTRAL$data[p_ASTRAL$data$node %in% c(13, 12), "x"] = max(p_ASTRAL$data$x)
+p_ASTRAL$data[p_ASTRAL$data$node %in% c(101), "x"] = max(p_ASTRAL$data$x)/2
+
+p_ASTRAL = ggtree::rotate(p_ASTRAL, 52) +
+  geom_tiplab(color = "black", size = 2.75, align = TRUE, linetype = "dotted", linesize = 0.7) +
+  geom_nodepoint(aes(fill = cut(as.numeric(label), c(0, 0.70, 0.90, 1.00))), shape = 21, size = 3) +
+  scale_fill_manual(values = c("white", "grey", "black")) +
+  theme(legend.position = "none")
+
+# get tree data
+d_ML = p_ML$data 
+d_ASTRAL = p_ASTRAL$data
+
+# rescale ASTRAL tree to ML tree space
+scale_ratio_bl = max(d_ML$branch.length) / max(d_ASTRAL$branch.length)
+scale_ratio_x = max(d_ML$x) / max(d_ASTRAL$x)
+scale_ratio_b = max(d_ML$branch) / max(d_ASTRAL$branch) 
+d_ASTRAL$branch.length = d_ASTRAL$branch.length * scale_ratio_bl
+d_ASTRAL$x = d_ASTRAL$x * scale_ratio_x
+d_ASTRAL$branch = d_ASTRAL$branch * scale_ratio_b
+
+# reverse x-axis and set offset to make ASTRAL tree on the right-hand side of ML tree
+d_ASTRAL$x = max(d_ASTRAL$x) - d_ASTRAL$x + max(d_ML$x) + 0.1
+
+
+# combine trees
+p_combined = p_ML +
+  geom_nodepoint(aes(fill = cut(as.numeric(label),
+                                c(0, 70, 90, 100))), shape = 21, size = 3) +
+  scale_fill_manual(values = c("black", "grey", "white"),
+                    guide = "legend",
+                    name = "Bootstrap",
+                    breaks = c("(90,100]", "(70,90]", "(0,70]"),
+                    labels = expression(BP>=90,70 <= BP * " < 90", BP < 70)) +
+  labs(title = "cp + mt, 99 genes") +
+  theme(plot.title = element_text(hjust = 0.5),
+        legend.position = "bottom") +
+  geom_tree(data = d_ASTRAL) +
+  #geom_tiplab(data = d_ASTRAL, color = "black", size = 2.75, align = TRUE, linetype = "dotted", linesize = 0.7) +
+  ggnewscale::new_scale_fill() +
+  geom_nodepoint(data = d_ASTRAL, aes(fill = cut(as.numeric(label), c(0, 0.70, 0.90, 1.00))), shape = 21, size = 3) +
+  scale_fill_manual(values = c("white", "grey", "black"), guide = "none")
+
+# combine tip data
+d_ML$x = max(d_ML$x) + 0.05
+d_ASTRAL$x = d_ASTRAL$x - 0.0125
+d_labels = dplyr::bind_rows(d_ML, d_ASTRAL) %>%
+  dplyr::filter(isTip == TRUE)
+d_labels$color_group = ifelse(
+  d_labels$label %in% c("Ufene", "Usp4"), "red",
+  ifelse(d_labels$label %in% c(
+    "Uaust1", "Uaust2", "Uaust4", "Ufaust5", "Ufaust6",
+    "Ucomp1", "Ucomp2", "Ucomp3", "Ucomp4", "Ucomp5", "Ucomp6", "Ucomp7", "Ucomp8", "Ucomp9", "Ucomp10",
+    "Ulact2", "Ulact3",
+    "Umeri1", "Umeri3", "Umeri4", "Umeri5"), "grey", "steelblue")
+)
+
+p_combined +
+  geom_tiplab(color = "antiquewhite3", size = 2.75, align = TRUE, linetype = "dotted", linesize = 0.7) +
+  geom_tiplab(color = "black", size = 2.75, align = TRUE, linetype = "dotted", linesize = 0) +
+  geom_line(data = d_labels, aes(x, y, group = label, color = color_group)) +
+  scale_color_manual(values = c("grey", "red", "steelblue"), guide = FALSE)
+
 
 ```
 
 
 
-### ML phylogeny
+#### Chloroplast ML tree
 
 
-### coalescence based
+
+```{r}
+#| echo: TRUE
+#| result: hide
+#| code-fold: FALSE
+#| message: FALSE
+#| warning: FALSE
+#| fig.height: 6
+#| fig.cap: "Figure 2: cp species tree reconstruction"
+
+
+ML_tree = phylogenetic_trees[["cp_ML"]][["tree"]]
+ML_tree = groupClade(ML_tree, 37)
+
+# prep ML tree
+p_ML = ggtree(ML_tree, aes(linetype = group)) +
+  scale_linetype_discrete(guide = "none")
+
+p_ML$data[p_ML$data$node %in% c(1, 2), "x"] = mean(p_ML$data$x)
+p_ML$data[p_ML$data$node %in% c(38), "x"] = mean(p_ML$data$x)/2
+
+p_ML = ggtree::rotate(p_ML, 37) 
+
+# prep ASTRAL tree
+ASTRAL_tree = phylogenetic_trees[["cp_ASTRAL"]][["tree"]]
+ASTRAL_tree = groupClade(ASTRAL_tree, 37)
+
+p_ASTRAL = ggtree(ASTRAL_tree, aes(linetype = group)) +
+  scale_linetype_discrete(guide = "none")
+
+p_ASTRAL$data[p_ASTRAL$data$node %in% c(20, 21), "x"] = max(p_ASTRAL$data$x)
+p_ASTRAL$data[p_ASTRAL$data$node %in% c(71), "x"] = max(p_ASTRAL$data$x)/2
+
+p_ASTRAL = ggtree::rotate(p_ASTRAL, 37) +
+  geom_tiplab(color = "black", size = 2.75, align = TRUE, linetype = "dotted", linesize = 0.7) +
+  geom_nodepoint(aes(fill = cut(as.numeric(label), c(0, 0.70, 0.90, 1.00))), shape = 21, size = 3) +
+  scale_fill_manual(values = c("white", "grey", "black")) +
+  theme(legend.position = "none")
+
+# get tree data
+d_ML = p_ML$data 
+d_ASTRAL = p_ASTRAL$data
+
+# rescale ASTRAL tree to ML tree space
+scale_ratio_bl = max(d_ML$branch.length) / max(d_ASTRAL$branch.length)
+scale_ratio_x = max(d_ML$x) / max(d_ASTRAL$x)
+scale_ratio_b = max(d_ML$branch) / max(d_ASTRAL$branch) 
+d_ASTRAL$branch.length = d_ASTRAL$branch.length * scale_ratio_bl
+d_ASTRAL$x = d_ASTRAL$x * scale_ratio_x
+d_ASTRAL$branch = d_ASTRAL$branch * scale_ratio_b
+
+# reverse x-axis and set offset to make ASTRAL tree on the right-hand side of ML tree
+d_ASTRAL$x = max(d_ASTRAL$x) - d_ASTRAL$x + max(d_ML$x) + 0.1
+
+
+# combine trees
+p_combined = p_ML +
+  geom_nodepoint(aes(fill = cut(as.numeric(label),
+                                c(0, 70, 90, 100))), shape = 21, size = 3) +
+  scale_fill_manual(values = c("black", "grey", "white"),
+                    guide = "legend",
+                    name = "Bootstrap",
+                    breaks = c("(90,100]", "(70,90]", "(0,70]"),
+                    labels = expression(BP>=90,70 <= BP * " < 90", BP < 70)) +
+  labs(title = "cp, 70 genes") +
+  theme(plot.title = element_text(hjust = 0.5),
+        legend.position = "bottom") +
+  geom_tree(data = d_ASTRAL) +
+  ggnewscale::new_scale_fill() +
+  geom_nodepoint(data = d_ASTRAL, aes(fill = cut(as.numeric(label), c(0, 0.70, 0.90, 1.00))), shape = 21, size = 3) +
+  scale_fill_manual(values = c("white", "grey", "black"), guide = "none")
+
+# combine tip data
+d_ML$x = max(d_ML$x) + 0.05
+d_ASTRAL$x = d_ASTRAL$x - 0.0125
+d_labels = dplyr::bind_rows(d_ML, d_ASTRAL) %>%
+  dplyr::filter(isTip == TRUE)
+d_labels$color_group = ifelse(
+  d_labels$label %in% c(
+    "Ucomp5", "Ucomp9", "Ucomp10", "Ucomp3", "Ucomp1", "Ucomp2", "Ucomp6", "Ucomp4",
+    "Ulinz", "Uprol3", "Uprol2", "Utort", "Uflex1", "Ucali",
+    "Umeri7", "Umeri6", "Usp2", "Uprol1",
+    "Ulaci1", "Uaust3", "Urigi1", "Ulaci2"
+  ), "grey", "steelblue"
+)
+
+p_combined +
+  geom_tiplab(color = "antiquewhite3", size = 2.75, align = TRUE, linetype = "dotted", linesize = 0.7) +
+  geom_tiplab(color = "black", size = 2.75, align = TRUE, linetype = "dotted", linesize = 0) +
+  geom_line(data = d_labels, aes(x, y, group = label, color = color_group)) +
+  scale_color_manual(values = c("grey", "steelblue"), guide = FALSE)
+
+
+```
+
+
+
+#### Mitochondrial ML tree
+
+
+
+
+```{r}
+#| echo: TRUE
+#| result: hide
+#| code-fold: FALSE
+#| message: FALSE
+#| warning: FALSE
+#| fig.height: 6
+#| fig.cap: "Figure 3: mt species tree reconstruction"
+
+
+ML_tree = phylogenetic_trees[["mt_ML"]][["tree"]]
+ML_tree = groupClade(ML_tree, 40)
+
+# prep ML tree
+p_ML = ggtree(ML_tree, aes(linetype = group)) +
+  scale_linetype_discrete(guide = "none")
+
+p_ML$data[p_ML$data$node %in% c(1, 2), "x"] = mean(p_ML$data$x)
+p_ML$data[p_ML$data$node %in% c(41), "x"] = mean(p_ML$data$x)/2
+
+p_ML = ggtree::rotate(p_ML, 40) 
+
+# prep ASTRAL tree
+ASTRAL_tree = phylogenetic_trees[["mt_ASTRAL"]][["tree"]]
+ASTRAL_tree = groupClade(ASTRAL_tree, 40)
+
+p_ASTRAL = ggtree(ASTRAL_tree, aes(linetype = group)) +
+  scale_linetype_discrete(guide = "none")
+
+p_ASTRAL$data[p_ASTRAL$data$node %in% c(25, 24), "x"] = max(p_ASTRAL$data$x)
+p_ASTRAL$data[p_ASTRAL$data$node %in% c(77), "x"] = max(p_ASTRAL$data$x)/2
+
+p_ASTRAL = ggtree::rotate(p_ASTRAL, 40) +
+  geom_tiplab(color = "black", size = 2.75, align = TRUE, linetype = "dotted", linesize = 0.7) +
+  geom_nodepoint(aes(fill = cut(as.numeric(label), c(0, 0.70, 0.90, 1.00))), shape = 21, size = 3) +
+  scale_fill_manual(values = c("white", "grey", "black")) +
+  theme(legend.position = "none")
+
+# get tree data
+d_ML = p_ML$data 
+d_ASTRAL = p_ASTRAL$data
+
+# rescale ASTRAL tree to ML tree space
+scale_ratio_bl = max(d_ML$branch.length) / max(d_ASTRAL$branch.length)
+scale_ratio_x = max(d_ML$x) / max(d_ASTRAL$x)
+scale_ratio_b = max(d_ML$branch) / max(d_ASTRAL$branch) 
+d_ASTRAL$branch.length = d_ASTRAL$branch.length * scale_ratio_bl
+d_ASTRAL$x = d_ASTRAL$x * scale_ratio_x
+d_ASTRAL$branch = d_ASTRAL$branch * scale_ratio_b
+
+# reverse x-axis and set offset to make ASTRAL tree on the right-hand side of ML tree
+d_ASTRAL$x = max(d_ASTRAL$x) - d_ASTRAL$x + max(d_ML$x) + 0.1
+
+
+# combine trees
+p_combined = p_ML +
+  geom_nodepoint(aes(fill = cut(as.numeric(label),
+                                c(0, 70, 90, 100))), shape = 21, size = 3) +
+  scale_fill_manual(values = c("black", "grey", "white"),
+                    guide = "legend",
+                    name = "Bootstrap",
+                    breaks = c("(90,100]", "(70,90]", "(0,70]"),
+                    labels = expression(BP>=90,70 <= BP * " < 90", BP < 70)) +
+  labs(title = "mt, 29 genes") +
+  theme(plot.title = element_text(hjust = 0.5),
+        legend.position = "bottom") +
+  geom_tree(data = d_ASTRAL) +
+  ggnewscale::new_scale_fill() +
+  geom_nodepoint(data = d_ASTRAL, aes(fill = cut(as.numeric(label), c(0, 0.70, 0.90, 1.00))), shape = 21, size = 3) +
+  scale_fill_manual(values = c("white", "grey", "black"), guide = "none")
+
+# combine tip data
+d_ML$x = max(d_ML$x) + 0.05
+d_ASTRAL$x = d_ASTRAL$x - 0.0125
+d_labels = dplyr::bind_rows(d_ML, d_ASTRAL) %>%
+  dplyr::filter(isTip == TRUE)
+d_labels$color_group = ifelse(
+  d_labels$label %in% c("Usp3", "Utort", "Umeri6", "Usp4", "Urigi3", "Ufene"), "red", "grey"
+)
+
+p_combined +
+  geom_tiplab(color = "antiquewhite3", size = 2.75, align = TRUE, linetype = "dotted", linesize = 0.7) +
+  geom_tiplab(color = "black", size = 2.75, align = TRUE, linetype = "dotted", linesize = 0) +
+  geom_line(data = d_labels, aes(x, y, group = label, color = color_group)) +
+  scale_color_manual(values = c("grey", "red", "steelblue"), guide = FALSE)
+
+
+```
+
+
+:::
+
+
+
+
+cp + mt good except for "Ufene" and "Usp4" position.
+cp cannot solve clade orders, while "species" refinition remane the same
+mt is a trainwreck
+
 
 
 
