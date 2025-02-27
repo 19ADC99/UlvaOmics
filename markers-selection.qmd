@@ -36,6 +36,19 @@ we select only 10 genes (6 cp and 4 mt) because doing the combination with all t
 ### gene distances to species three
 
 
+```{bash, eval=FALSE}
+
+
+
+
+		python3.10 combinatorial_ML_phylogeny.py --infolder "ANALYSES_AND_RESULTS/
+09_combinatorial_phylogeny/00_cp_genes/,ANALYSES_AND_RESULTS/09_combinatorial_phylogeny/00_mt_genes/" --names "CP,MT" --iqtree /home/Andrea/Desktop/ANALYSES_AND_RESULTS/bin/iqtree-2.2.0-Linux/bin/iqtree2 --n_genes 10 --outdir /home/Andrea/Desktop/CP_MT/ANALYSES_AND_RESULTS/09_combinatorial_phylogeny/
+
+```
+
+
+
+
 ```{r, eval=FALSE}
 
 
