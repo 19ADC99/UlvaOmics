@@ -89,6 +89,8 @@ The gene matrix occupancy and gene length distribution across organellar genomes
 #| fig.height: 6
 #| fig.cap: "Figure 1: Genes occupancy"
 
+#!/usr/bin/env R
+
 # read tables
 cp_mt_genes_occupancy = read.delim("./data/cp_mt_genes_occupancy.tab")
 
@@ -152,6 +154,8 @@ Next, we retrieved the CDS sequences and we align them. To do so, first we extra
 #| message: FALSE
 #| warning: FALSE
 
+#!/usr/bin/env bash
+
 # get CP genes list
 cut -f 9 00_cp_GenBank_RAW/*.gff \
   | sed "s/Name=//g" \
@@ -203,6 +207,8 @@ We will use [faTrans](https://open.bioqueue.org/home/knowledge/showKnowledge/sig
 #| code-fold: FALSE
 #| message: FALSE
 #| warning: FALSE
+
+#!/usr/bin/env bash
 
 # translate CP to amino-acid sequences
 for file in 01_cp_CDS/*.fa; do
@@ -270,6 +276,8 @@ Let's now fetch the length of the alignments in R.
 #| message: FALSE
 #| warning: FALSE
 
+#!/usr/bin/env R
+
 # create gene distribution matrix
 gene_length_distributions = matrix(ncol = 2)
 
@@ -316,6 +324,8 @@ gene_length_distributions$`length (bp)` = as.numeric(gene_length_distributions$`
 #| echo: FALSE
 #| include: FALSE
 
+#!/usr/bin/env R
+
 gene_length_distributions = utils::read.delim("./data/cp_mt_alignment_length_distributions.txt", header = TRUE)
 names(gene_length_distributions) = c("Organell", "length (bp)")
 gene_length_distributions$Organell = ifelse(
@@ -337,6 +347,8 @@ And let's plot the gene alignment distributions for the chloroplast and the mito
 #| warning: FALSE
 #| fig.height: 6
 #| fig.cap: "Figure 2: Alignment length distributions"
+
+#!/usr/bin/env R
 
 # plot
 p2 = ggplot(gene_length_distributions, aes(x = Organell, y = `length (bp)`, fill = Organell)) +

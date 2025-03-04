@@ -81,6 +81,8 @@ SINGLE GENE TREE
 #| message: FALSE
 #| warning: FALSE
 
+#!/usr/bin/env bash
+
 # CP gene wise Maximum Likelihood phylogeny
 mkdir ./03_cp_singleGene_ML && cd ./03_cp_singleGene_ML
 ls ../02_cp_CDS_align/*.fa \
@@ -119,6 +121,8 @@ Now we can create a nexus file with the best model predicted for each gene. This
 #| code-fold: FALSE
 #| message: FALSE
 #| warning: FALSE
+
+#!/usr/bin/env bash
 
 # create nexus file with best models CP and MT 
 for ORGANEL in cp mt; do 
@@ -195,6 +199,8 @@ We will use [catfasta2phyml](https://github.com/nylander/catfasta2phyml) to conc
 #| code-fold: FALSE
 #| message: FALSE
 #| warning: FALSE
+
+#!/usr/bin/env bash
 
 # concatenate CP alignments
 perl ~/bin/catfasta2phyml.pl \
@@ -274,6 +280,8 @@ For the coalescence-based approach, first we need to compute the single-gene ML 
 
 
 ```{bash, echo=FALSE, include=FALSE, eval=FALSE}
+
+#!/usr/bin/env bash
 
 # prepare files
 cat 03_cp_singleGene_ML/*.contree > 05_cp_ASTRAL/cp_genetrees.tre
@@ -359,6 +367,8 @@ First we import the trees in R.
 #| message: FALSE
 #| warning: FALSE
 
+#!/usr/bin/env R
+
 # phylogenetic trees placeholder
 phylogenetic_trees = list(
   "cp_ML" = list("type" = "ML", "tree" = NA, "root" = NA, "dendro" = NA),
@@ -429,6 +439,7 @@ We will do this for the cp + mt, cp only and mt only gene sets.
 #| fig.height: 6
 #| fig.cap: "Figure 1: cp + mt species tree reconstruction"
 
+#!/usr/bin/env R
 
 ML_tree = phylogenetic_trees[["cp_mt_ML"]][["tree"]]
 ML_tree = groupClade(ML_tree, 53)
@@ -530,6 +541,7 @@ p_combined +
 #| fig.height: 6
 #| fig.cap: "Figure 2: cp species tree reconstruction"
 
+#!/usr/bin/env R
 
 ML_tree = phylogenetic_trees[["cp_ML"]][["tree"]]
 ML_tree = groupClade(ML_tree, 37)
@@ -631,6 +643,7 @@ p_combined +
 #| fig.height: 6
 #| fig.cap: "Figure 3: mt species tree reconstruction"
 
+#!/usr/bin/env R
 
 ML_tree = phylogenetic_trees[["mt_ML"]][["tree"]]
 ML_tree = groupClade(ML_tree, 40)
@@ -727,7 +740,238 @@ mt is a trainwreck
 ### distances between reconstructed species trees
 
 
+Let's check how similar / different are the reconstructed trees.
+We will use four metrics:
 
+* "common_nodes_corr"
+* "RF"
+* "KF"
+* "MAST_%"
+
+First we calculate the distances:
+
+
+
+```{r}
+#| echo: TRUE
+#| eval: TRUE
+#| result: hide
+#| code-fold: FALSE
+#| message: FALSE
+#| warning: FALSE
+
+#!/usr/bin/env R
+
+# get list of dendrograms to compare
+dendro_list = dendextend::dendlist(
+  "cp_ML" = phylogenetic_trees[["cp_ML"]][["tree"]] %>%
+    ape::chronos() %>%
+    stats::as.dendrogram(),
+  "cp_ASTRAL" = phylogenetic_trees[["cp_ASTRAL"]][["tree"]] %>%
+    ape::chronos() %>%
+    stats::as.dendrogram(),
+  "mt_ML" = phylogenetic_trees[["mt_ML"]][["tree"]] %>%
+    ape::chronos() %>%
+    stats::as.dendrogram(),
+  "mt_ASTRAL" = phylogenetic_trees[["mt_ASTRAL"]][["tree"]] %>%
+    ape::chronos() %>%
+    stats::as.dendrogram(),
+  "cp_mt_ML" = phylogenetic_trees[["cp_mt_ML"]][["tree"]] %>%
+    ape::chronos() %>%
+    stats::as.dendrogram(),
+  "cp_mt_ASTRAL" = phylogenetic_trees[["cp_mt_ASTRAL"]][["tree"]] %>%
+    ape::chronos() %>%
+    stats::as.dendrogram()
+)
+
+# create empty lists for distances and correlations
+empty_matrix = matrix(nrow = 6, ncol = 6)
+colnames(empty_matrix) = c("cp_ML", "cp_ASTRAL", "mt_ML", "mt_ASTRAL", "cp_mt_ML", "cp_mt_ASTRAL")
+rownames(empty_matrix) = c("cp_ML", "cp_ASTRAL", "mt_ML", "mt_ASTRAL", "cp_mt_ML", "cp_mt_ASTRAL")
+dist_DB_pairwise = list(
+  "common_nodes_corr" = empty_matrix,
+  "RF" = empty_matrix,
+  "KF" = empty_matrix,
+  "MAST_%" = empty_matrix
+)
+dist_DB_min_set_species = list(
+  "common_nodes_corr" = empty_matrix,
+  "RF" = empty_matrix,
+  "KF" = empty_matrix,
+  "MAST_%" = empty_matrix
+)
+
+# common nodes correlation
+common_nodes_corr = dendextend::cor.dendlist(dendro_list, method = "common_nodes")
+dist_DB_pairwise[["common_nodes_corr"]] = common_nodes_corr
+dist_DB_min_set_species[["common_nodes_corr"]] = common_nodes_corr
+
+# get pairwise distances
+for(i in 1:length(phylogenetic_trees)){
+  for(k in 1:length(phylogenetic_trees)){
+    
+    # get tree
+    tree1_tmp = phylogenetic_trees[[i]][["tree"]]
+    tree2_tmp = phylogenetic_trees[[k]][["tree"]]
+    
+    # list of common species
+    species_list = tree1_tmp$tip.label[which(tree1_tmp$tip.label %in% tree2_tmp$tip.label)]
+
+    # get overlapping species
+    tree1 = ape::keep.tip(tree1_tmp, species_list)
+    tree2 = ape::keep.tip(tree2_tmp, species_list)
+    
+    # get distances
+    distances = phangorn::treedist(tree1, tree2)
+    dist_DB_pairwise[["RF"]][i, k] = distances[[1]]
+    dist_DB_pairwise[["KF"]][i, k] = distances[[2]]
+    #dist_DB_pairwise[["path_diff"]][i, k] = distances[[3]]
+    dist_DB_pairwise[["MAST_%"]][i, k] = length(phangorn::mast(tree1, tree2, tree = FALSE)) / length(species_list)
+    
+    # clean
+    rm(tree1_tmp, tree2_tmp, tree1, tree2, species_list, distances)
+  }
+}
+
+# make list of minimum set of species
+min_species_list = phylogenetic_trees[["cp_mt_ML"]][["tree"]]$tip.label
+for(i in 1:length(phylogenetic_trees)){
+  min_species_list = min_species_list[which(min_species_list %in% phylogenetic_trees[[i]][["tree"]]$tip.label)]
+}
+
+# get distances based on minimum set of species
+for(i in 1:length(phylogenetic_trees)){
+  for(k in 1:length(phylogenetic_trees)){
+
+    # get overlapping species
+    tree1 = ape::keep.tip(phylogenetic_trees[[i]][["tree"]], min_species_list)
+    tree2 = ape::keep.tip(phylogenetic_trees[[k]][["tree"]], min_species_list)
+    
+    # get distances
+    distances = phangorn::treedist(tree1, tree2)
+    dist_DB_min_set_species[["RF"]][i, k] = distances[[1]]
+    dist_DB_min_set_species[["KF"]][i, k] = distances[[2]]
+    #dist_DB_min_set_species[["path_diff"]][i, k] = distances[[3]]
+    dist_DB_min_set_species[["MAST_%"]][i, k] = length(phangorn::mast(tree1, tree2, tree = FALSE)) / length(min_species_list)
+    
+    # clean
+    rm(tree1, tree2, distances)
+  }
+}
+
+
+```
+
+
+Then we plot them based on the pairwise label sets between trees
+
+
+```{r}
+#| echo: TRUE
+#| result: hide
+#| code-fold: FALSE
+#| message: FALSE
+#| warning: FALSE
+#| fig.height: 6
+#| fig.cap: "Figure 4: species trees distance based on pairwise label sets between trees"
+
+#!/usr/bin/env R
+
+# prepare plot layout
+layout(matrix(c(1, 2, 3, 4), nrow = 2, ncol = 2, byrow = TRUE))
+
+for(i in 1:length(dist_DB_pairwise)){
+  # parameters for correlation VS distances
+  correlation = FALSE
+  color_scale = list(
+    rev(COL2("RdBu")),
+    COL1("Blues"),
+    COL1("Blues"),
+    COL1("YlOrRd")
+  )
+  tile_shape = "color"
+  if(i == 1){
+    correlation = TRUE
+    tile_shape = "pie"
+  }
+  # plot
+  corrplot::corrplot(
+    dist_DB_pairwise[[i]],
+    title = names(dist_DB_pairwise)[[i]],
+    tile_shape, 
+    "upper",
+    order = "original",
+    is.corr = correlation,
+    col = color_scale[[i]],
+    tl.srt = 45,
+    tl.col = "grey15",
+    mar = c(0, 0, 2, 0),
+    cl.pos = "r",
+    cl.align.text = "l"
+  )
+}
+
+# reset layout
+par(mfrow = c(1, 1))
+
+
+```
+
+
+
+We can also see what are the distances if we restrict ourselves only to the isolates for which we have both the cp and the mt genomes (i.e.: full occupancy matrix)
+
+
+
+```{r}
+#| echo: TRUE
+#| result: hide
+#| code-fold: FALSE
+#| message: FALSE
+#| warning: FALSE
+#| fig.height: 6
+#| fig.cap: "Figure 5: species trees distance based on overlapping cp+mt isolates"
+
+#!/usr/bin/env R
+
+# prepare plot layout
+layout(matrix(c(1, 2, 3, 4), nrow = 2, ncol = 2, byrow = TRUE))
+
+for(i in 1:length(dist_DB_min_set_species)){
+  # parameters for correlation VS distances
+  correlation = FALSE
+  color_scale = list(
+    rev(COL2("RdBu")),
+    COL1("Blues"),
+    COL1("Blues"),
+    COL1("YlOrRd")
+  )
+  tile_shape = "color"
+  if(i == 1){
+    correlation = TRUE
+    tile_shape = "pie"
+  }
+  # plot
+  corrplot::corrplot(
+    dist_DB_min_set_species[[i]],
+    title = names(dist_DB_min_set_species)[[i]],
+    tile_shape, 
+    "upper",
+    order = "original", 
+    is.corr = correlation,
+    col = color_scale[[i]],
+    tl.srt = 45,
+    tl.col = "grey15",
+    mar = c(0, 0, 2, 0),
+    cl.pos = "r",
+    cl.align.text = "l")
+}
+
+# reset layout
+par(mfrow = c(1, 1))
+
+
+```
 
 
 
