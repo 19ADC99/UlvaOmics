@@ -465,15 +465,68 @@ ComplexHeatmap::Heatmap(
 ```
 
 
+:::
 
 
 
+The top 10 single genes that produce similar ML tree topology to the Ulva species tree reconstructed from supermatrix analysis. The genes are ordered based on the decreasing values of the corresponding index.
 
 
 
+```{r}
+#| echo: FALSE
+#| warning: FALSE
+
+gene_table = data.frame(
+  "rank" = seq(1, 10) %>% as.character(),
+  "cp.RF" = c("psaA", "rpoC2", "rpoA", "rpoC1", "psaB", "psbB", "rps12", "ycf1", "chlI", "rps2"),
+  "cp.MAST%" = c("psbB", "psaA", "rps2", "petB", "rpoC1", "psaB", "psbD", "rpl12", "rpoC2", "rpoA"),
+  "cp.KF" = c("rpoA", "ycf20", "rpoB", "rpl32", "rps8", "accD", "atpF", "rps4", "rps9", "rpl2"),
+  "cp.corr" = c("psaA", "psaB", "ycf1", "chlI", "rpoA", "psbB", "rpl19", "tufA", "rpoC1", "accD"),
+  "mt.RF" = c("rps10", "rps3", "cox1", "rps2", "atp1", "atp6", "cox2", "nad4", "rps4", "nad2"),
+  "mt.MAST%" = c("cox1", "cox2", "atp1", "cox3", "rps4", "rps2", "rps3", "cob", "rps19", "rps10"),
+  "mt.KF" = c("rps3", "rps10", "rps2", "nad5", "nad7", "cox1", "rpl16", "rpl14", "rps14", "rps4"),
+  "mt.corr" = c("cox2", "atp6", "cox3", "nad5", "rpl16", "rps11", "rps4", "nad2", "nad4", "cox1"),
+  "cp_mt.RF" = c("psaA", "rpoC2", "rpoA", "rpoC1", "psaB", "psbB", "rps12", "ycf1", "chlI", "rps2"),
+  "cp_mt.MAST%" = c("psbB", "psaA", "rps2", "cox1", "cox2", "petB", "rpoC1", "psaB", "psbD", "rpl12"),
+  "cp_mt.KF" = c("mt_rps3", "mt_rps10", "rpoA", "mt_rps2", "nad5", "ycf20", "rpoB", "rpl32", "rps8", "accD"),
+  "cp_mt.corr" = c("psaA", "psaB", "ycf1", "cox2", "chlI", "rpoA", "psbB", "rpl19", "tufA", "atp6")
+)
+
+# generate container with merged headers
+sketch = htmltools::withTags(
+  table(
+    class = "display",
+    thead(
+      tr(
+        th(rowspan = 2, "Rank"),
+        th(colspan = 4, "chloroplast"),
+        th(colspan = 4, "mitochondria"),
+        th(colspan = 4, "chloroplast + mitochondria"),
+      ),
+      tr(
+        lapply(rep(c("RF", "MAST %", "KF", "comm. node corr."), 3), th)
+      )
+    )
+  )
+)
+
+# print gene table
+DT::datatable(
+  gene_table,
+  container = sketch,
+  rownames = FALSE,
+  extensions = c("FixedColumns", "FixedHeader"),
+  caption = "Table 1: top 10 genes closest to the reconstructed Ulva species tree.", 
+  options = list(
+    scrollX = TRUE, paging = TRUE, fixedHeader = FALSE, pageLength = 10
+  )
+)
+
+```
 
 
-
+Ide
 
 
 Among the 70 cp genes chosen, the four indices RF, KF, MAST and the correlation between the common nodes metrics pointed out 24 unique cp genes that provide the most similar topology compared to the species tree constructed using 70 genes, namely accD, atpF, chlI, petB, psaA, psaB, psbB, psbD, rpl12, rpl19, rpl2, rpl32, rpoA, rpoB, rpoC1, rpoC2, rps12, rps2, rps4, rps8, rps9, tufA, ycf1, and ycf20 (Table 1). Among them, several genes such as psaA, psaB, and psbB are consistently identified by different matrices. Similarly, the same approach applied to the Ulva species trees reconstructed using mt suggested 19 unique mt genes, namely atp1, atp6, cob, cox1, cox2, cox3, nad2, nad4, nad5, nad7, rpl14, rpl16, rps10, rps11, rps14, rps19, rps2, rps3, and rps4, of which several genes such as atp6, cox1, cox2, rps3, and rps10 are suggested by different indices. Since the Ulva specimens used in this study do not always have both cp and mt genomes, the Ulva species trees reconstructed using cp and mt supermatrix have different set of tips, depending on the availability of the genomes. Prior analyses suggested that MAST% and common correlation nodes metrics are the best performers to assess phylogenetic tree distances when the tree do not have the same set of tips, we then selected (arbitrarily) 10 genes for the combinatorial approach, petB, psaA, psaB, psbB, psbD, rps2, atp6, cox1, cox2, and mt_rps3, based on the top 10 single gene ML trees with topology closest to cp_mt_ML. The first six genes are cp genes while the other four genes are mt genes. 
