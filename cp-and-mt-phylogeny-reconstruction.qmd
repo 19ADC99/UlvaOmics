@@ -15,10 +15,6 @@ div.sourceCode {
   font-style: italic;
 }
 
-.r-code {
-  font-style: italic;
-}
-
 ```
 
 

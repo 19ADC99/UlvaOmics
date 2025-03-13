@@ -11,6 +11,11 @@ div.sourceCode {
   overflow: scroll;
 }
 
+.bash-code {
+  font-style: italic;
+}
+
+
 ```
 
 
@@ -148,6 +153,7 @@ Next, we retrieved the CDS sequences and we align them. To do so, first we extra
 
 ```{bash}
 #| echo: TRUE
+#| class.source: bash-code
 #| eval: FALSE
 #| result: hide
 #| code-fold: FALSE
@@ -202,8 +208,9 @@ We will use [faTrans](https://open.bioqueue.org/home/knowledge/showKnowledge/sig
 
 ```{bash}
 #| echo: TRUE
+#| class.source: bash-code
 #| eval: FALSE
-#| result: hid
+#| result: hide
 #| code-fold: FALSE
 #| message: FALSE
 #| warning: FALSE
