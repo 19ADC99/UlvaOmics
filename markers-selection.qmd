@@ -534,32 +534,6 @@ Among the 70 cp genes chosen, the four indices RF, KF, MAST and the correlation 
 
 
 
-Table 1: The top 10 single genes that produce similar ML tree topology to the Ulva species tree reconstructed from supermatrix analysis. The genes are ordered based on the decreasing values of the corresponding index.
-
-cp	cp_mt	mt
-RF	MAST%	KF	cor	RF	MAST%	KF	cor	RF	MAST%	KF	cor
-psaA	psbB	rpoA	psaA	psaA	psbB	mt_rps3	psaA	rps10	cox1	rps3	cox2
- rpoC2	 psaA	 ycf20	 psaB	 rpoC2	 psaA	 mt_rps10	 psaB	 rps3	 cox2	 rps10	 atp6
- rpoA	 rps2	 rpoB	 ycf1	 rpoA	 rps2	 rpoA	 ycf1	 cox1	 atp1	 rps2	 cox3
- rpoC1	 petB	 rpl32	 chlI	 rpoC1	 cox1	 mt_rps2	 cox2	 rps2	 cox3	 nad5	 nad5
- psaB	 rpoC1	 rps8	 rpoA	 psaB	 cox2	 nad5	 chlI	 atp1	 rps4	 nad7	 rpl16
- psbB	 psaB	 accD	 psbB	 psbB	 petB	 ycf20	 rpoA	 atp6	 rps2	 cox1	 rps11
- rps12	 psbD	 atpF	 rpl19	 rps12	 rpoC1	 rpoB	 psbB	 cox2	 rps3	 rpl16	 rps4
- ycf1	 rpl12	 rps4	 tufA	 ycf1	 psaB	 rpl32	 rpl19	 nad4	 cob	 rpl14	 nad2
- chlI	 rpoC2	 rps9	 rpoC1	 chlI	 psbD	 rps8	 tufA	 rps4	 rps19	 rps14	 nad4
- rps2	 rpoA	 rpl2	 accD	 rps2	 rpl12	 accD	 atp6	 nad2	 rps10	 rps4	 cox1
-
-Ide
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -574,37 +548,41 @@ cp_genes = c("petB", "psaA", "psaB", "psbB", "psbD", "rps2")
 mt_genes = c("atp6", "cox1", "cox2", "rps3")
 
 
+```{bash}
+#| echo: TRUE
+#| class.source: bash-code
+#| eval: FALSE
+#| result: hide
+#| code-fold: FALSE
+#| message: FALSE
+#| warning: FALSE
 
-```{bash, eval=FALSE}
+#!/usr/bin/env bash
 
-
-
-
-		python3.10 combinatorial_ML_phylogeny.py --infolder "ANALYSES_AND_RESULTS/
-09_combinatorial_phylogeny/00_cp_genes/,ANALYSES_AND_RESULTS/09_combinatorial_phylogeny/00_mt_genes/" --names "CP,MT" --iqtree /home/Andrea/Desktop/ANALYSES_AND_RESULTS/bin/iqtree-2.2.0-Linux/bin/iqtree2 --n_genes 10 --outdir /home/Andrea/Desktop/CP_MT/ANALYSES_AND_RESULTS/09_combinatorial_phylogeny/
+python3.10 combinatorial_ML_phylogeny.py \
+  --infolder "./09_combinatorial_phylogeny/00_cp_genes/,./09_combinatorial_phylogeny/00_mt_genes/" \
+  --names "CP,MT" \
+  --iqtree ~/bin/iqtree-2.2.0-Linux/bin/iqtree2 \
+  --n_genes 10 \
+  --outdir ./09_combinatorial_phylogeny/
 
 ```
 
 
+Awesome!
 
+we have generated all possible 2-10 genes combination out of our selection, and we have concatenated the corresponding nucleotidic sequences and we have reconstructed their phylogenetic trees.
+Let's now see what is the minimum set of chloroplast and mitochondrial marker that approximate the reconstructe Ulva species tree.
 
+First, we import all the generated combinatorial trees.
 
-
-### cp only
-
-ss
-
-
-### mt only
-
-ss
-
-### cp + mt 
-
-ss
-
-
-```{r, eval=FALSE}
+```{r}
+#| echo: TRUE
+#| eval: FALSE
+#| result: hide
+#| code-fold: FALSE
+#| message: FALSE
+#| warning: FALSE
 
 
 # declare gene lists
@@ -615,15 +593,17 @@ mt_genes = c("atp6", "cox1", "cox2", "rps3")
 cp_mt_ML_dendro = ape::read.tree(file = "06_cp_mt_concat_ML/cp_mt_allgenes_concat.contree")
 
 # create empty list of trees
-combinatorial_trees = list("cp_mt_conc_2_genes" = list("cp_mt_ML" = cp_mt_ML_dendro),
-                           "cp_mt_conc_3_genes" = list("cp_mt_ML" = cp_mt_ML_dendro),
-                           "cp_mt_conc_4_genes" = list("cp_mt_ML" = cp_mt_ML_dendro),
-                           "cp_mt_conc_5_genes" = list("cp_mt_ML" = cp_mt_ML_dendro),
-                           "cp_mt_conc_6_genes" = list("cp_mt_ML" = cp_mt_ML_dendro),
-                           "cp_mt_conc_7_genes" = list("cp_mt_ML" = cp_mt_ML_dendro),
-                           "cp_mt_conc_8_genes" = list("cp_mt_ML" = cp_mt_ML_dendro),
-                           "cp_mt_conc_9_genes" = list("cp_mt_ML" = cp_mt_ML_dendro),
-                           "cp_mt_conc_10_genes" = list("cp_mt_ML" = cp_mt_ML_dendro))
+combinatorial_trees = list(
+  "cp_mt_conc_2_genes" = list("cp_mt_ML" = cp_mt_ML_dendro),
+  "cp_mt_conc_3_genes" = list("cp_mt_ML" = cp_mt_ML_dendro),
+  "cp_mt_conc_4_genes" = list("cp_mt_ML" = cp_mt_ML_dendro),
+  "cp_mt_conc_5_genes" = list("cp_mt_ML" = cp_mt_ML_dendro),
+  "cp_mt_conc_6_genes" = list("cp_mt_ML" = cp_mt_ML_dendro),
+  "cp_mt_conc_7_genes" = list("cp_mt_ML" = cp_mt_ML_dendro),
+  "cp_mt_conc_8_genes" = list("cp_mt_ML" = cp_mt_ML_dendro),
+  "cp_mt_conc_9_genes" = list("cp_mt_ML" = cp_mt_ML_dendro),
+  "cp_mt_conc_10_genes" = list("cp_mt_ML" = cp_mt_ML_dendro)
+)
 
 # populate combinatorial trees
 for(k in 2:10){
@@ -663,37 +643,50 @@ for(k in 2:10){
   rm(cp, gene, k, mt, tree, tree_list_all, tree_list_fltr)
 }
 
+```
 
 
-#------------------------------------------------------------------------------#
-## 2.2 - Get distance matrices                                              ####
+Next step: we calculate the distances between the combinatorial trees and the reconstructed Ulva species tree.
+
+
+
+```{r}
+#| echo: TRUE
+#| eval: FALSE
+#| result: hide
+#| code-fold: FALSE
+#| message: FALSE
+#| warning: FALSE
 
 # create distance lists
-combinatorial_distances = list("cp_mt_conc_2_genes" = NULL,
-                               "cp_mt_conc_3_genes" = NULL,
-                               "cp_mt_conc_4_genes" = NULL,
-                               "cp_mt_conc_5_genes" = NULL,
-                               "cp_mt_conc_6_genes" = NULL,
-                               "cp_mt_conc_7_genes" = NULL,
-                               "cp_mt_conc_8_genes" = NULL,
-                               "cp_mt_conc_9_genes" = NULL,
-                               "cp_mt_conc_10_genes" = NULL)
+combinatorial_distances = list(
+  "cp_mt_conc_2_genes" = NULL,
+  "cp_mt_conc_3_genes" = NULL,
+  "cp_mt_conc_4_genes" = NULL,
+  "cp_mt_conc_5_genes" = NULL,
+  "cp_mt_conc_6_genes" = NULL,
+  "cp_mt_conc_7_genes" = NULL,
+  "cp_mt_conc_8_genes" = NULL,
+  "cp_mt_conc_9_genes" = NULL,
+  "cp_mt_conc_10_genes" = NULL
+)
 
 # populate distance lists
 combinatorial_list = c(25, 97, 195, 247, 210, 121, 46, 11, 2)
 for(k in 1:length(combinatorial_distances)){
   
   # get size of the results matrix
-  empty_matrix = matrix(nrow = combinatorial_list[[k]],
-                        ncol = combinatorial_list[[k]])
+  empty_matrix = matrix(nrow = combinatorial_list[[k]], ncol = combinatorial_list[[k]])
   colnames(empty_matrix) = names(combinatorial_trees[[k]])
   rownames(empty_matrix) = names(combinatorial_trees[[k]])
   
   # populate
-  combinatorial_distances[[k]] = list("common_nodes_corr" = empty_matrix,
-                                      "RF" = empty_matrix,
-                                      "KF" = empty_matrix,
-                                      "MAST_%" = empty_matrix)
+  combinatorial_distances[[k]] = list(
+    "common_nodes_corr" = empty_matrix,
+    "RF" = empty_matrix,
+    "KF" = empty_matrix,
+    "MAST_%" = empty_matrix
+  )
   
   # clean
   rm(empty_matrix)
@@ -770,69 +763,6 @@ for(j in 1:length(combinatorial_trees)){
   }
 }
 
-
-## export the distance matrices
-for(i in 1:length(combinatorial_distances)){
-  write.table(combinatorial_distances[[i]][["common_nodes_corr"]],
-              file = paste("UlvaOmics.", format(Sys.Date(), format = "%Y%m%d"), ".05_combinatorial_stats.cp_mt_conc_", i + 1, "_genes.common_nodes_corr.txt",  sep = ""),
-              quote = FALSE, sep = '\t', col.names = TRUE, row.names = TRUE)
-  write.table(combinatorial_distances[[i]][["RF"]],
-              file = paste("UlvaOmics.", format(Sys.Date(), format = "%Y%m%d"), ".05_combinatorial_stats.cp_mt_conc_", i + 1, "_genes.RF.txt",  sep = ""),
-              quote = FALSE, sep = '\t', col.names = TRUE, row.names = TRUE)
-  write.table(combinatorial_distances[[i]][["KF"]],
-              file = paste("UlvaOmics.", format(Sys.Date(), format = "%Y%m%d"), ".05_combinatorial_stats.cp_mt_conc_", i + 1, "_genes.KF.txt",  sep = ""),
-              quote = FALSE, sep = '\t', col.names = TRUE, row.names = TRUE)
-  write.table(combinatorial_distances[[i]][["MAST_%"]],
-              file = paste("UlvaOmics.", format(Sys.Date(), format = "%Y%m%d"), ".05_combinatorial_stats.cp_mt_conc_", i + 1, "_genes.MAST_%.txt",  sep = ""),
-              quote = FALSE, sep = '\t', col.names = TRUE, row.names = TRUE)
-}
-
-
-
-#------------------------------------------------------------------------------#
-## 2.3 - Plot distance matrices                                             ####
-
-
-# 
-# for(k in 1:length(combinatorial_distances)){
-#   
-#   # remove possible rows/columns with only NAs
-#   tmp_matrix = distance_sets[[i]][[k]]
-#   tmp_matrix = tmp_matrix[, colSums(is.na(tmp_matrix)) < nrow(tmp_matrix)]
-#   tmp_matrix = tmp_matrix[rowSums(is.na(tmp_matrix)) < ncol(tmp_matrix), ]
-#   
-#   # get names
-#   plot_name = ifelse(names(distance_sets[[i]])[[k]] == "common_nodes_corr", "common\nnodes\ncorr", names(distance_sets[[i]])[[k]])
-#   
-#   # prep annotation
-#   organell = as.data.frame(ifelse(rownames(tmp_matrix) %in% cp_genes_list, "cp",
-#                                   ifelse(rownames(tmp_matrix) %in% mt_genes_list, "mt", "cp_mt")))
-#   rownames(organell) = rownames(tmp_matrix)
-#   colnames(organell) = "organell"
-#   organell$color = ifelse(organell$organell == "cp", "#469d89", ifelse(organell$organell == "mt", "steelblue", "red"))
-#   
-#   # plot raw distance
-#   distances_plots[[i]][[k]] = grid.grabExpr(draw(ComplexHeatmap::Heatmap(tmp_matrix,
-#                                                                          col = colorRamp2(c(min(tmp_matrix[!is.na(tmp_matrix)]),
-#                                                                                             max(tmp_matrix[!is.na(tmp_matrix)])),
-#                                                                                           c("white", "#D55E00")),
-#                                                                          row_names_gp = gpar(col = organell$color),
-#                                                                          column_names_gp = gpar(col = organell$color),
-#                                                                          top_annotation = HeatmapAnnotation(organell = as.matrix(organell$organell),
-#                                                                                                             show_annotation_name = FALSE,
-#                                                                                                             show_legend = FALSE,
-#                                                                                                             col = list(organell = c("cp_mt" = "red", "cp" = "#469d89", "mt" = "steelblue"))),
-#                                                                          left_annotation = rowAnnotation(organell = as.matrix(organell$organell),
-#                                                                                                          show_annotation_name = FALSE,
-#                                                                                                          col = list(organell = c("cp_mt" = "red", "cp" = "#469d89", "mt" = "steelblue"))),
-#                                                                          name = plot_name)))
-#   grid.newpage(recording = TRUE)
-#   grid.draw(distances_plots[[i]][[k]])
-# 
-# 
-# }
-
-
 ```
 
 
@@ -855,25 +785,45 @@ Four metrics (RF, KF, MAST% and common correlation nodes scores) between each of
 
 
 
+```{r}
+#| echo: FALSE
+#| warning: FALSE
 
+gene_table = data.frame(
+  "# genes" = seq(2, 10) %>% as.character(),
+  "representative best genes markers" = c(
+    "psaA_cox1", "rps2_psaA_cox1", "psbD_psaA_cox1_cox2", "psbD_rps2_psaA_cox1_cox2",
+    "psbB_psbD_rps2_psaA_cox1_cox2", "psaB_psbB_psbD_rps2_psaA_cox1_cox2",
+    "petB_psbB_psbD_rps2_psaA_atp6_cox1_cox2", "petB_psaB_psbB_psbD_rps2_psaA_atp6_cox1_rps3",
+    "petB_psaB_psbB_psbD_rps2_psaA_atp6_cox1_cox2_rps3"
+  ),
+  "MAST %" = c("0.824", "0.882", "0.941", "0.941", "0.941", "0.941", "0.941", "0.922", "0.882"),
+  "# of equivalent combinations" = c("1", "6", "1", "6", "10", "8", "2", "2", "1"),
+  "Common node correlation" = c("0.901", "0.931", "0.95", "0.96", "0.96", "0.96", "0.96", "0.95", "0.931"),
+  "# of equivalent combinations" = c("1  psaA_cox2", "1 psbB_cox1_cox2", "1", "1 psaB_psbB_rps2_cox1_cox2", "1 petB_psaB_psbB_rps2_cox1_cox2", "3 petB_psbD_rps2_psaA_atp6_cox1_cox2", "1", "2", "1")
+)
 
-r each combination.
+colnames(gene_table) = c(
+  "# genes",
+  "representative best genes markers",
+  "MAST %",
+  "# of equivalent combinations",
+  "Common node correlation",
+  "# of equivalent combinations"
+)
 
-  genes	representative best genes markers	MAST%	# of equivalent combinations	Common node correlation	# of equivalent combinations
-2	psaA_cox1
-	0.824	1	0.901	1  psaA_cox2
-3	rps2_psaA_cox1
-	0.882	6	0.931	1 psbB_cox1_cox2
-4	psbD_psaA_cox1_cox2	0.941	1	0.950	1
-5	psbD_rps2_psaA_cox1_cox2	0.941	6	0.960	1 psaB_psbB_rps2_cox1_cox2
-6	psbB_psbD_rps2_psaA_cox1_cox2	0.941
-	10	0.960	1 petB_psaB_psbB_rps2_cox1_cox2
-7	psaB_psbB_psbD_rps2_psaA_cox1_cox2	0.941	8	0.960	3 petB_psbD_rps2_psaA_atp6_cox1_cox2
-8	petB_psbB_psbD_rps2_psaA_atp6_cox1_cox2	0.941	2	0.960	1
-9	petB_psaB_psbB_psbD_rps2_psaA_atp6_cox1_rps3	0.922
-	2	0.950	2
-10	petB_psaB_psbB_psbD_rps2_psaA_atp6_cox1_cox2_rps3	0.882	1	0.931	1
+# print gene table
+DT::datatable(
+  gene_table,
+  rownames = FALSE,
+  extensions = c("FixedColumns", "FixedHeader"),
+  caption = "Table 2: best combinatorial tree for each gene set", 
+  options = list(
+    scrollX = TRUE, paging = TRUE, fixedHeader = FALSE, pageLength = 10
+  )
+)
 
+```
 
 
 
