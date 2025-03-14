@@ -51,7 +51,7 @@ Biological insights and take-home messages are at the bottom of the page at Less
 In order to select the top 10 genes for the combinatorial approach, we first need to calculate the distance metrics between the single-gene ML tree and the reconstructed *Ulva* species tree. We have decided to constrain the search to the top 10 genes, since the space of gene combinations that are possible increase exponentially the more genes we add to the combinatorial analysis.
 
 
-### gene distances to species three
+### Gene distances to species tree
 
 For each of the 99 chloroplast and mitochondrial genes we will calculate the four distance metrics that we have used so far: common nodes correlation, RF distance, KF distance and MAST %.
 

@@ -706,7 +706,7 @@ The ML and ASTRAL mitochondrial trees (29 genes) are highly discordant, suggesti
 
 
 
-### distances between reconstructed species trees
+### Distances between reconstructed species trees
 
 The tanglegrams provided a visual represenation of the concordance between the reconstructed *Ulva* species tree, but we can also calculate the similarities of the reconstructed trees.
 We will use four metrics:
