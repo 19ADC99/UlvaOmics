@@ -1,4 +1,4 @@
-# Ulva organellar genomes retrieval and preparation
+# *Ulva* organellar genomes retrieval and preparation
 
 
 ```{css, echo=FALSE}
@@ -39,9 +39,8 @@ source("src/utils.R")
 
 Biological insights and take-home messages are at the bottom of the page at Lesson Learnt: @sec-lesson-learnt-cp-and-mt-dataset-overview.
 
-* Here we retrieve Ulva organellar genomes
-* we investigate the 
-
+* Here we retrieve *Ulva* organellar genomes;
+* we investigate the organellar genome availability and the gene occupancy across the retrieved genomes.
 
 
 
@@ -51,9 +50,9 @@ Biological insights and take-home messages are at the bottom of the page at Less
 ### Dataset retrieval
 
 
-We included the following species, that as for 2022 where the most comprehensive list of cp and mt complete genomes published for Ulva.
+We included the following species 50 *Ulva* species, that as for 2022 where the most comprehensive list of chloroplasts and mitochondrial complete genomes published for *Ulva*.
 
-Oltmassiellopsis viridi and Pseudendoclonium akinetum were used as an outgroup to root the phylogenetic three.
+*Oltmassiellopsis viridis* and *Pseudendoclonium akinetum* were used as an outgroup to root the phylogenetic tree.
 
 
 ```{r}
@@ -67,7 +66,8 @@ species_table = read.delim("data/species.txt")
 DT::datatable(
   species_table,
   extensions = c("FixedColumns", "FixedHeader"),
-  caption = "Table 1: Species used in the study", 
+  caption = "Table 1: Species used in the study",
+  escape = FALSE, 
   options = list(
     scrollX = TRUE, paging = TRUE, fixedHeader = FALSE, pageLength = 10
   )
@@ -82,7 +82,8 @@ Organellar genome sequences and gene models were retrieved from NCBI, and correc
 
 ### Gene occupancy
 
-The gene matrix occupancy and gene length distribution across organellar genomes included in this study are presented below. Most selected genes are present/ nearly present in all studied sequences. In 29 selected genes for mitochondrial, there are two genes, rps3 and rps4 that are not presented in more than 10% of the 37 mt genomic sequences. For chloroplast, there are 10 out of 70 genes not presented in more than 10% of the 34 cp genomic sequences.
+The gene matrix occupancy and gene length distribution across organellar genomes included in this study are presented below. Most selected genes are present/ nearly present in all studied sequences.
+Based on the gene occupancy, we selected 29 genes from the mitochondrial genomes for the downstream analyses, and 70 genes from the chloroplast genomes.
 
 
 ```{r}
@@ -93,8 +94,6 @@ The gene matrix occupancy and gene length distribution across organellar genomes
 #| warning: FALSE
 #| fig.height: 6
 #| fig.cap: "Figure 1: Genes occupancy"
-
-#!/usr/bin/env R
 
 # read tables
 cp_mt_genes_occupancy = read.delim("./data/cp_mt_genes_occupancy.tab")
@@ -283,8 +282,6 @@ Let's now fetch the length of the alignments in R.
 #| message: FALSE
 #| warning: FALSE
 
-#!/usr/bin/env R
-
 # create gene distribution matrix
 gene_length_distributions = matrix(ncol = 2)
 
@@ -331,8 +328,6 @@ gene_length_distributions$`length (bp)` = as.numeric(gene_length_distributions$`
 #| echo: FALSE
 #| include: FALSE
 
-#!/usr/bin/env R
-
 gene_length_distributions = utils::read.delim("./data/cp_mt_alignment_length_distributions.txt", header = TRUE)
 names(gene_length_distributions) = c("Organell", "length (bp)")
 gene_length_distributions$Organell = ifelse(
@@ -354,8 +349,6 @@ And let's plot the gene alignment distributions for the chloroplast and the mito
 #| warning: FALSE
 #| fig.height: 6
 #| fig.cap: "Figure 2: Alignment length distributions"
-
-#!/usr/bin/env R
 
 # plot
 p2 = ggplot(gene_length_distributions, aes(x = Organell, y = `length (bp)`, fill = Organell)) +
@@ -387,13 +380,15 @@ plot(p2)
 ```
 
 
+On average, the mitochondrial genes seem longer than the chloroplast genes. The chloroplast genes contains 3 large outliers with the CDS alignments longer than 3 kbps, correlsponding to the three RNA polimerase genes *rpoB*, *rpoC1*, *rpoC2*. 
+
 
 ## Lessons Learnt {#sec-lesson-learnt-cp-and-mt-dataset-overview}
 So far, we have learnt:
 
-* TCGA is a public resource with a wide collection of samples from cancer biopsies from patients affected by 32 different cancer types.
-* TCGA provides abundant molecular and clinical information for both biopsies and patients and it allows for patient stratification and therapeutic target discovery.
-* Cancers with kidneys as primary sites are the third most abundant samples available in TCGA (n = 1,030 samples), after breast (n = 1,246) and lung biopsies (n = 1,156), and provides an excellent yet challenging case-study.
+* we have 50 *Ulva* isolates from 15 different *Ulva* species for which we have chloroplasts and mitochondrial genomes;
+* where the organellar genome is available, the genes present are highly conserved across *Ulva* isolates and species;
+* we have in total 99 genes (70 from the chloroplast and 29 from the mitochondria) that we can use for the downstream analyses.
 
 
 

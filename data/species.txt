@@ -1,0 +1,53 @@
+label	species	NCBI taxid	isolate	cp accenssion number	mt accession number
+Oviri	<em>Oltmannsiellopsis viridis</em>	51324		NC_008099	NC_008256
+Pakin	<em>Pseudendoclonium akinetum</em>	160070		NC_008114	NC_005926
+Uaust1	<em>Ulva australis</em>	111616	KU-1658	LC507117
+Uaust2	<em>Ulva australis</em>	111616	U100	NC_053611	MT179354
+Uaust3	<em>Ulva australis</em>	111616	CNS00533	MW531676
+Uaust4	<em>Ulva australis</em>	111616		MN853875
+Uaust5	<em>Ulva australis</em>	111616	Up1		NC_035722
+Uaust6	<em>Ulva australis</em>	111616	Up2		KX530817
+Ucali	<em>Ulva californica</em>	83794	U484-3	MZ561475
+Ucomp1	<em>Ulva compressa</em>	63659		MK069585	MK069586
+Ucomp10	<em>Ulva compressa</em>	63659		data from Frederik	data from Frederik
+Ucomp2	<em>Ulva compressa</em>	63659		MT916929
+Ucomp3	<em>Ulva compressa</em>	63659	Ucom2	MW344287	MH013469
+Ucomp4	<em>Ulva compressa</em>	63659	Ucom3	MW353781
+Ucomp5	<em>Ulva compressa</em>	63659	UNA00072687	MW548841
+Ucomp6	<em>Ulva compressa</em>	63659		NC_050739	KX595276
+Ucomp7	<em>Ulva compressa</em>	63659			MH093740
+Ucomp8	<em>Ulva compressa</em>	63659			NC_041082
+Ucomp9	<em>Ulva compressa</em>	63659		NC_043860	MK069587
+Ufene	<em>Ulva fenestrata</em>	83795	U64	NC_053612	MT179355
+Uflex1	<em>Ulva flexuosa</em>	83791		NC_035823	NC_035809
+Uflex2	<em>Ulva flexuosa</em>	83791	Ufle2		MH013470
+Uflex3	<em>Ulva flexuosa</em>	83791			KY626326
+Ugiga	<em>Ulva gigantea</em>	523338	U57	NC_053613	MT179356
+Uinte	<em>Ulva intestinalis</em>	3116	CNS00531	MZ158703	MZ571476
+Ulaci1	<em>Ulva lacinulata</em>	2806530	L0054997	MW543061
+Ulaci2	<em>Ulva lacinulata</em>	2806530	U35	NC_053614	NC_053631
+Ulact1	<em>Ulva lactuca</em>	63410		NC_029040	NC_028081
+Ulact2	<em>Ulva lactuca</em>	63410			KU182748
+Ulact3	<em>Ulva lactuca</em>	63410	L0054996	NC_042255	MH763013
+Ulinz	<em>Ulva linza</em>	63409	QD08	NC_030312	NC_029701
+Umeri1	<em>Ulva medirionalis</em>	434723	LF008		ON402240
+Umeri2	<em>Ulva medirionalis</em>	434723	LF010		NC_065202
+Umeri3	<em>Ulva medirionalis</em>	434723	LF011		ON402237
+Umeri4	<em>Ulva medirionalis</em>	434723	LF012		ON402238
+Umeri5	<em>Ulva medirionalis</em>	434723	LF018		ON402239
+Umeri6	<em>Ulva meridionalis</em>	434723	SHOU2019QD082001	MN889540	MN861072
+Umeri7	<em>Ulva meridionalis</em>	434723	UNA00071828	KP720616	KP720617
+Uohno	<em>Ulva ohnoi</em>	240864	KU-3321	AP018696	AP018695
+Uprol1	<em>Ulva prolifera</em>	3117		MN853879
+Uprol2	<em>Ulva prolifera</em>	3117	U161	MZ571508
+Uprol3	<em>Ulva prolifera</em>	3117		NC_036137	KU161104
+Uprol4	<em>Ulva prolifera</em>	3117			NC_028538
+Uprol5	<em>Ulva prolifera</em>	3117			MN853878
+Urigi1	<em>Ulva rigida</em>	75689	HCC102617	MN389525	MN389526
+Urigi2	<em>Ulva rigida</em>	75689	LD 14294	MW543060
+Urigi3	<em>Ulva rigida</em>	75689	U112	NC_053616	NC_053633
+Usp1	<em>Ulva</em> sp. AF-2021	2847172	AF-2021	NC_053615	NC_053632
+Usp2	<em>Ulva</em> sp. Q253	2608636	Q253	MW699788
+Usp3	<em>Ulva</em> sp. TM637	2496872	TM637		NC_053253
+Usp4	<em>Ulva</em> sp. TM708	2496873	TM708		NC_053254
+Utort	<em>Ulva torta</em>	932731		MZ703011	NC_053255

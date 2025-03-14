@@ -40,23 +40,20 @@ source("src/utils.R")
 
 Biological insights and take-home messages are at the bottom of the page at Lesson Learnt: @sec-lesson-learnt-markers-selection.
 
-* Here we focus on samples from Kidney Cancers patients and their overall relationships.
-* We then explore the association between each Kidney Cancer subtype and the major clinical covariates (e.g.: sex, disease status, cancer stage, clinical outcome).
+* Here we compute the distance between the single-gene ML trees and the reconstructed *Ulva* species tree;
+* we select the top 10 chloroplast and mitochondrial genes which single-gene tree is closer to the *Ulva* species tree; 
+* we deploy a combinatorial approach to compute all the possible 2:10 gene combinations and the resulting ML phylogenetic tree;
+* finally, we determine the minimum set of genes that can confidently reconstruct the *Ulva* species tree.
 
 
 ## Organellar gene selection
 
-select genes based on their distance to the reconstructed CP+MT phylogenetic three
-
-we select only 10 genes (6 cp and 4 mt) because doing the combination with all the 99 genes wilñl take forever
+In order to select the top 10 genes for the combinatorial approach, we first need to calculate the distance metrics between the single-gene ML tree and the reconstructed *Ulva* species tree. We have decided to constrain the search to the top 10 genes, since the space of gene combinations that are possible increase exponentially the more genes we add to the combinatorial analysis.
 
 
 ### gene distances to species three
 
-
-We take cp+mt ML tree as the real species tree for Ulva.
-Let's now calculate the distance between each gene-tree and the species tree that we have reconstructed.
-Then, we can chose the top 5-10 genes that are closer to the reconstructed species tree to see what is their minimal combination able to reconstruct the gene tree.
+For each of the 99 chloroplast and mitochondrial genes we will calculate the four distance metrics that we have used so far: common nodes correlation, RF distance, KF distance and MAST %.
 
 
 ```{r}
@@ -66,7 +63,6 @@ Then, we can chose the top 5-10 genes that are closer to the reconstructed speci
 #| code-fold: FALSE
 #| message: FALSE
 #| warning: FALSE
-
 
 # get cp ML gene trees
 cp_ML_genes = list()
@@ -220,8 +216,6 @@ for(i in 1:length(distance_sets[["cp_mt_genes_distances"]])){
 #| echo: FALSE
 #| include: FALSE
 
-#!/usr/bin/env R
-
 # read distances lists
 cp_mt_genes_distances = list(
   "common_nodes_corr" = utils::read.delim("./data/cp_mt.common_nodes_corr.txt", header = TRUE),
@@ -236,9 +230,7 @@ distance_sets = list("cp_mt_genes_distances" = cp_mt_genes_distances)
 ```
 
 
-
-
-Let's now plot the generated distances!
+Very well, let's now plot the generated distances!
 
 
 
@@ -254,9 +246,7 @@ Let's now plot the generated distances!
 #| message: FALSE
 #| warning: FALSE
 #| fig.height: 6
-#| fig.cap: "Figure 1: cp + mt species tree reconstruction"
-
-#!/usr/bin/env R
+#| fig.cap: "Figure 1: Common node correlation between single-gene tree and reconstructed *Ulva* species tree."
 
 # prepare gene lists
 cp_genes_list = c(
@@ -320,10 +310,7 @@ ComplexHeatmap::Heatmap(
 #| message: FALSE
 #| warning: FALSE
 #| fig.height: 6
-#| fig.cap: "Figure 1: cp + mt species tree reconstruction"
-
-#!/usr/bin/env R
-
+#| fig.cap: "Figure 2: Robinson–Foulds distance between single-gene tree and reconstructed *Ulva* species tree."
 
 # remove possible rows/columns with only NAs
 tmp_matrix = distance_sets[["cp_mt_genes_distances"]][["RF"]]
@@ -373,10 +360,7 @@ ComplexHeatmap::Heatmap(
 #| message: FALSE
 #| warning: FALSE
 #| fig.height: 6
-#| fig.cap: "Figure 1: cp + mt species tree reconstruction"
-
-#!/usr/bin/env R
-
+#| fig.cap: "Figure 3: Kuhner-Felsenstein distance between single-gene tree and reconstructed *Ulva* species tree."
 
 # remove possible rows/columns with only NAs
 tmp_matrix = distance_sets[["cp_mt_genes_distances"]][["KF"]]
@@ -425,10 +409,7 @@ ComplexHeatmap::Heatmap(
 #| message: FALSE
 #| warning: FALSE
 #| fig.height: 6
-#| fig.cap: "Figure 1: cp + mt species tree reconstruction"
-
-#!/usr/bin/env R
-
+#| fig.cap: "Figure 4: Maximum Agreement SubTree % between single-gene tree and reconstructed *Ulva* species tree."
 
 # remove possible rows/columns with only NAs
 tmp_matrix = distance_sets[["cp_mt_genes_distances"]][["MAST_%"]]
@@ -467,10 +448,11 @@ ComplexHeatmap::Heatmap(
 
 :::
 
+The four indices RF, KF, MAST and the correlation between the common nodes metrics pointed out 24 chloroplast genes that provide the most similar topology compared to the *Ulva* species tree, namely *accD*, *atpF*, *chlI*, *petB*, *psaA*, *psaB*, *psbB*, *psbD*, *rpl12*, *rpl19*, *rpl2*, *rpl32*, *rpoA*, *rpoB*, *rpoC1*, *rpoC2*, *rps12*, *rps2*, *rps4*, *rps8*, *rps9*, *tufA*, *ycf1*, and *ycf20*. Among them, several genes such as *psaA*, *psaB*, and *psbB* are consistently identified by different matrices.
 
+For the mitochondrial, 19 genes provide the most similar topology compared to the *Ulva* species tree, namely *atp1*, *atp6*, *cob*, *cox1*, *cox2*, *cox3*, *nad2*, *nad4*, *nad5*, *nad7*, *rpl14*, *rpl16*, *rps10*, *rps11*, *rps14*, *rps19*, *rps2*, *rps3*, and *rps4*. 
 
-The top 10 single genes that produce similar ML tree topology to the Ulva species tree reconstructed from supermatrix analysis. The genes are ordered based on the decreasing values of the corresponding index.
-
+For each dataset and distance metric, we report below the top 10 single genes most similar to the *Ulva* species tree that we have reconstructed. The genes are ordered based on the decreasing values of the corresponding index.
 
 
 ```{r}
@@ -526,26 +508,11 @@ DT::datatable(
 ```
 
 
-Ide
-
-
-Among the 70 cp genes chosen, the four indices RF, KF, MAST and the correlation between the common nodes metrics pointed out 24 unique cp genes that provide the most similar topology compared to the species tree constructed using 70 genes, namely accD, atpF, chlI, petB, psaA, psaB, psbB, psbD, rpl12, rpl19, rpl2, rpl32, rpoA, rpoB, rpoC1, rpoC2, rps12, rps2, rps4, rps8, rps9, tufA, ycf1, and ycf20 (Table 1). Among them, several genes such as psaA, psaB, and psbB are consistently identified by different matrices. Similarly, the same approach applied to the Ulva species trees reconstructed using mt suggested 19 unique mt genes, namely atp1, atp6, cob, cox1, cox2, cox3, nad2, nad4, nad5, nad7, rpl14, rpl16, rps10, rps11, rps14, rps19, rps2, rps3, and rps4, of which several genes such as atp6, cox1, cox2, rps3, and rps10 are suggested by different indices. Since the Ulva specimens used in this study do not always have both cp and mt genomes, the Ulva species trees reconstructed using cp and mt supermatrix have different set of tips, depending on the availability of the genomes. Prior analyses suggested that MAST% and common correlation nodes metrics are the best performers to assess phylogenetic tree distances when the tree do not have the same set of tips, we then selected (arbitrarily) 10 genes for the combinatorial approach, petB, psaA, psaB, psbB, psbD, rps2, atp6, cox1, cox2, and mt_rps3, based on the top 10 single gene ML trees with topology closest to cp_mt_ML. The first six genes are cp genes while the other four genes are mt genes. 
-
-
-
-
-
-
-
 ## Markers selection
 
-We use a combinatorial approach to select the minimum list of genes to approxima te the CP+MT species three
+Prior analyses suggested that MAST% and common correlation nodes metrics are the best performers to assess phylogenetic tree distances when the tree do not have the same set of tips, we then selected (arbitrarily) 10 genes for the combinatorial approach, *petB*, *psaA*, *psaB*, *psbB*, *psbD*, *rps2* from the chloroplast and *atp6*, *cox1*, *cox2*, and *rps3* from the mitochondria.
 
-
-
-
-cp_genes = c("petB", "psaA", "psaB", "psbB", "psbD", "rps2")
-mt_genes = c("atp6", "cox1", "cox2", "rps3")
+With the combinatorial approach, we can now compute their 2:10 genes combination, concatenate their alignment and reconstruct the corresponding ML tree.
 
 
 ```{bash}
@@ -572,7 +539,20 @@ python3.10 combinatorial_ML_phylogeny.py \
 Awesome!
 
 we have generated all possible 2-10 genes combination out of our selection, and we have concatenated the corresponding nucleotidic sequences and we have reconstructed their phylogenetic trees.
-Let's now see what is the minimum set of chloroplast and mitochondrial marker that approximate the reconstructe Ulva species tree.
+
+The combinatorial approach generated 945 unique combinations of at least a chloroplast and a mitochondrial marker:
+
+* 24 combinations of 2 marker genes;
+* 96 combinations of 3 markers;
+* 194 combinations of 4 markers;
+* 246 combinations of 5 markers;
+* 209 combinations of 6 markers;
+* 120 combinations of 7 markers;
+* 45 combinations of 8 markers; 
+* 10 combinations of 9 markers;
+* finally 1 containing all 10 markers genes
+
+Let's now see what is the minimum set of chloroplast and mitochondrial marker that approximate the reconstructed *Ulva* species tree.
 
 First, we import all the generated combinatorial trees.
 
@@ -646,7 +626,7 @@ for(k in 2:10){
 ```
 
 
-Next step: we calculate the distances between the combinatorial trees and the reconstructed Ulva species tree.
+Next step: we calculate the distances between the combinatorial trees and the reconstructed *Ulva* species tree.
 
 
 
@@ -766,22 +746,9 @@ for(j in 1:length(combinatorial_trees)){
 ```
 
 
+For each combination (i.e.: 2-genes combination, 3-genes combination, etc.), a representative combination with the highest the MAST% and the common node correlation are shown in the table below. The best combination to use for the development of *Ulva* organellar universal markers should be the combination with the highest values of the two indices and the lowest number of markers in the combination.
 
-
-
-
-To resolve Ulva species phylogenetic relationships, supermatrix and coalescence-based phylogenetic approaches were applied to the chloroplast and mitochondrial datasets. To appreciate the different phylogenetic signals present in the two organellar datasets, the chloroplast and mitochondrial datasets were first analyzed independently. Afterwards, a supermatrix containing both chloroplast and mitochondrial genes was composed in order to infer the Ulva species phylogenetic tree.
-For the supermatrix Maximum-likelihood (ML) reconstruction, a gene-wise partitioned analysis was performed (Chernomor et al 2016). To estimate the best substitution model of each partition, ML trees were built with IQtree v.2.2.0 (Minh et al 2020) for each single-copy gene, inferring the best model and rate of heterogeneity across sites. All ML analyses were run with 1,000 ultra-fast bootstrap and SH-aLRT branch test replicates.
-Gene trees were used also for the coalescent-based analyses, using ASTRAL v5.7.8 (Zhang et al 2018), using the multilocus bootstrap support (MLBS) approach. 100 replicates were run (-r) starting from the 1,000 bootstrap trees generated for each gene during the ML analyses, allowing gene and site resampling (–gene-resampling flag).
-Four metrics were used to assess the concordance of the Ulva species tree reconstructed from supermatrix and coalescence-based analyses obtained from the analyses of chloroplast genes, mitochondrial genes and chloroplast and mitochondrial genes: Robinson-Foulds (Robinson & Foulds 1981), Kuhner-Felsenstein (Kuhner & Felsenstein 1994), Maximum Agreement Subtree (Finden & Gordon 1985) calculated with phangorn package (Schliep 2011), and correlation between the common nodes calculated with corr.dendlist function from dendexted package (Galili 2015). The RF distance measures the number of unique splits between two trees by comparing their bipartitions. It ranges from 0 (identical trees) to a higher value indicating greater dissimilarity with more unique splits (Robinson & Foulds 1981). The KF index quantifies the average genetic differences per site between populations, considering genetic variation within and between populations to provide a quantitative measure of genetic distance (Kuhner & Felsenstein 1994). The MAST (%) identifies the subset of nodes and branches that are common to both trees, disregarding any additional or missing branches. It aims to find the largest possible subtree that can be extracted from both trees while preserving their structural similarities, representing the maximum level of agreement in their branching patterns (Finden & Gordon 1985). The correlation between the common nodes is calculated as the pairwise cophenetic correlation coefficient between the distance matrix and the cophenetic matrix of the common nodes (Galili 2015). Both phangorn and dendextend packages are available in R statistical programming language (R Core Team 2022).
-Organellar gene ranking
-To identify the minimum number of genes (markers) necessary to reconstruct the Ulva species tree reconstructed with the 99 chloroplast and mitochondrial markers, Robinson-Foulds, Kuhner-Felsenstein, Maximum Agreement Subtree and correlation between the common nodes metrics were calculated between each of the 99 chloroplast and mitochondrial markers and the Ulva species tree reconstructed from supermatrix analysis.
-The same approach applied to the Ulva species trees reconstructed using chloroplast and mitochondrial supermatrix and coalesce-based analyses suggested that Maximum Agreement Subtree and common correlation nodes metrics are the best performers to assess phylogenetic tree distances when the tree do not have the same set of tips. The 10 markers (6 chloroplasts and 4 mitochondrial) with the best MAST% and common correlation nodes scores were arbitrarily chosen as candidates for the subsequent combinatorial phylogenetic analyses.
-Combinatorial phylogenetic analysis
-For the combinatorial phylogenetic analysis, a custom python script was used to exhaustively calculate the permutations between the chosen 10 marker genes, sampling between 2 and 10 markers. This resulted in the 945 unique combinations of at least a chloroplast and a mitochondrial marker (24 combinations of 2 marker genes, 96 of 3 markers, 194 of 4 markers, 246 of 5 markers, 209 of 6 markers, 120 of 7 markers, 45 of 8 markers, 10 of 9 markers and finally 1 containing all 10 markers genes). For each combination of markers, the script would then independently reconstruct the corresponding phylogenetic tree by invoking IQtree, inferring the best model and rate of heterogeneity across sites, with 1,000 ultra-fast bootstrap and SH-aLRT branch test replicates.
-Four metrics (RF, KF, MAST% and common correlation nodes scores) between each of the reconstructed 945 tree and the Ulva species tree reconstructed with the 99 chloroplast and mitochondrial markers were calculated in an iterative manner to identify the minimum set of chloroplast and mitochondrial markers necessary to reconstruct a ML phylogenetic tree concordant with the Ulva species tree reconstructed in this study. These markers are suggested to be used as a novel combination of markers to molecularly characterize Ulva species, and universal primers will be designed for each of the markers.
-
-
+The combination with five to eight markers have the highest value for the MAST% and the highest value for the common node correlation, but given the number of markers, it might pose more challenges for the development process later. The combination with four markers, *psbD*, *psaA*, *cox1*, *cox2*, which also has the highest value for the MAST% and has the value for the common node correlation slightly lower than the highest value possible, however, we believe that approximates faithfully the reconstructed *Ulva* species tree and can be used to develop universal primers for easy and cost-efficient *Ulva* species classification of field and herbarium specimens.
 
 
 
@@ -828,16 +795,22 @@ DT::datatable(
 
 
 
-
-
-
 ## Lessons Learnt {#sec-lesson-learnt-markers-selection}
 
 So far, we have learnt:
 
+* chloroplast genes *petB*, *psaA*, *psaB*, *psbB*, *psbD*, *rps2* and mitochondrial genes *atp6*, *cox1*, *cox2*, and *rps3* are among the ones with the single-gene ML tree closest to the reconstructed *Ulva* species tree;
+* interestingly, commonly used markers (i.e.: *rbcL* and *tufA*) had a single-gene ML tree more distant to the reconstructed *Ulva* species tree than the other markers we have selected;
+* out of the 945 2:10 gene combinations that we have tested, the 4-genes combination *psbD*-*psaA*-*cox1*-*cox2* provides a ML phylogenetic tree that faithfully approximate the reconstructed *Ulva* species tree and could be used for the development of universal *Ulva* species markers.
 
 
+## Session Information
 
+:::{.callout-note collapse=true}
 
+```{r, echo=FALSE}
+utils::sessionInfo()
+```
 
+:::
 

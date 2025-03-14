@@ -38,35 +38,29 @@ source("src/utils.R")
 
 Biological insights and take-home messages are at the bottom of the page at Lesson Learnt: @sec-lesson-learnt-cp-and-mt-phylogeny-reconstruction.
 
-* Here we retrieve Ulva organellar genomes
-* we investigate the 
+* Here we reconstruct the *Ulva* species tree based on the 70 chloroplast and 29 mitochondrial genes we have retrieved using two methods: a Maximum Likelihood method and a coalescence-based one; 
+* we compare the species trees reconstructed by using only chloroplast genes or only mitochondrial genes against the *Ulva* species tree obtained with all 99 organellar genes.
 
 
 ## Reconstruction of Ulva species tree
 
 
-We will reconstruct the Ulva phylogenetic species tree using a Maximum Likelihood approach with [IQ-TREE](https://doi.org/10.1093/molbev/msaa015), and a coalescence-based one with [ASTRAL](https://doi.org/10.1186/s12859-018-2129-y). We will generate the species tree based on:
+We will reconstruct the *Ulva* phylogenetic species tree using a Maximum Likelihood approach with [IQ-TREE](https://doi.org/10.1093/molbev/msaa015), and a coalescence-based one with [ASTRAL](https://doi.org/10.1186/s12859-018-2129-y). We will generate the species tree based on:
 
 * chloroplast only genes
 * mitochondrial only genes
 * both chloroplast and mitochondrial genes
 
-and we will evaluate the similarities and differences between the reconstructued phylogenies.
+and we will evaluate the similarities and differences between the reconstructed phylogenies.
 
 
 ### Maximum Likelihodd species tree reconstruction
 
-
-
-
 For the ML approach, the first step consist in concatenating all alignments into a single concatenated file. We will use [catfasta2phyml](https://github.com/nylander/catfasta2phyml) to concatenate the nucleotidic sequences.
 
-We want to apply different 
-which also generates a nexus file that is required from IQ-TREE with the coordinates of each gene in the alignment. This allow us to partion the alignment to the gene level and apply different evolution models to different genes. Even if for each organelle all genes are inherited in linkage, the same is not true for the chloroplast and the mitochondrial genome. Moreover, this would allow to model different signals across genes that are under different evolutionary pressures.
+However, we want to apply different evolution models to different genes. Even if for each organelle all genes are inherited in linkage, the same is not true for the chloroplast and the mitochondrial genome. Moreover, this would allow to model different signals across genes that are under different evolutionary pressures. Therefore, first we run single-gene ML trees for each of the 99 genes, and for that gene we detect which evolution model result the Maximum Likelihood reconstruction. Then, we use that model to generate a nexus file for the concatenated alignment that we will provide to IQ-TREE to assign the best model for each partition (gene).
 
-
-SINGLE GENE TREE
-
+Let's start by running the ML tree reconstruction for each single organellar gene.
 
 ```{bash}
 #| echo: TRUE
@@ -184,7 +178,7 @@ sed -i 's/ ,;/;/g' ./06_cp_mt_concat_ML/cp_mt_allgenes_concat.nex
 
 ```
 
-We will use [catfasta2phyml](https://github.com/nylander/catfasta2phyml) to concatenate the nucleotidic sequences. 
+Now, we will use [catfasta2phyml](https://github.com/nylander/catfasta2phyml) to concatenate the nucleotidic sequences. 
 
 
 ```{bash}
@@ -255,27 +249,17 @@ cd ../06_cp_mt_concat_ML/
 
 ### Colescence-based species tree reconstruction
 
-For the coalescence-based approach, first we need to compute the single-gene ML tree.
+For the coalescence-based approach, we will reconciliate the single-gene ML tree. We will feed to the coalescence model also all the 1000 Bootstrap trees generate for each ML gene reconstruction, and we will allow for 100 gene resampling to improve the support value at the branch level for the reconstructed species tree.
 
 
 ```{bash}
 #| echo: TRUE
 #| eval: FALSE
+#| class.source: bash-code
 #| result: hide
 #| code-fold: FALSE
 #| message: FALSE
 #| warning: FALSE
-
-
-```
-
-
-
-
-
-
-
-```{bash, echo=FALSE, include=FALSE, eval=FALSE}
 
 #!/usr/bin/env bash
 
@@ -311,8 +295,7 @@ tail -n 1 05_cp_ASTRAL/cp_genetrees.coalescence.tre \
   > 05_cp_ASTRAL/cp_genetrees.coalescence.tre
 
 
-
-# rum mt coalescence-based tree
+# run mt coalescence-based tree
 java -Xmx24000M \
   -jar bin/Astral/astral.5.7.8.jar \
   --bootstraps 05_mt_ASTRAL/mt_bootstrap_trees.BS \
@@ -345,12 +328,9 @@ tail -n 1 07_cp_mt_ASTRAL/cp_mt_genetrees.coalescence.tre \
 
 
 
-
 ### Species trees comparison and reconciliation
 
-
-
-Let's plot the Maximum Likelihood trees we have just reconstructed!
+Let's plot the *Ulva* species trees we have just reconstructed!
 
 First we import the trees in R.
 
@@ -362,8 +342,6 @@ First we import the trees in R.
 #| code-fold: FALSE
 #| message: FALSE
 #| warning: FALSE
-
-#!/usr/bin/env R
 
 # phylogenetic trees placeholder
 phylogenetic_trees = list(
@@ -417,7 +395,12 @@ for(i in 1:length(phylogenetic_trees)){
 
 Lets now plot a tanglegram: we will have the ML tree and the ASTRAL tree facing each other, and lines connecting the corresponding position of the same alga isolate. This will allow us to compare the two three structure, as well as how much concordant are the phylogenetic reconstructions.
 
-We will do this for the cp + mt, cp only and mt only gene sets.
+We will do this for the three gene sets:
+
+* chloroplast genes only (70 genes)
+* mitochondrial genes only (27 genes)
+* chloroplast and mitochondrial genes (99 genes).
+
 
 
 ::: panel-tabset
@@ -434,8 +417,6 @@ We will do this for the cp + mt, cp only and mt only gene sets.
 #| warning: FALSE
 #| fig.height: 6
 #| fig.cap: "Figure 1: cp + mt species tree reconstruction"
-
-#!/usr/bin/env R
 
 ML_tree = phylogenetic_trees[["cp_mt_ML"]][["tree"]]
 ML_tree = groupClade(ML_tree, 53)
@@ -490,7 +471,7 @@ p_combined = p_ML +
                     name = "Bootstrap",
                     breaks = c("(90,100]", "(70,90]", "(0,70]"),
                     labels = expression(BP>=90,70 <= BP * " < 90", BP < 70)) +
-  labs(title = "cp + mt, 99 genes") +
+  labs(title = "Chloroplast + mitochondria, 99 genes") +
   theme(plot.title = element_text(hjust = 0.5),
         legend.position = "bottom") +
   geom_tree(data = d_ASTRAL) +
@@ -523,9 +504,7 @@ p_combined +
 ```
 
 
-
 #### Chloroplast ML tree
-
 
 
 ```{r}
@@ -536,8 +515,6 @@ p_combined +
 #| warning: FALSE
 #| fig.height: 6
 #| fig.cap: "Figure 2: cp species tree reconstruction"
-
-#!/usr/bin/env R
 
 ML_tree = phylogenetic_trees[["cp_ML"]][["tree"]]
 ML_tree = groupClade(ML_tree, 37)
@@ -592,7 +569,7 @@ p_combined = p_ML +
                     name = "Bootstrap",
                     breaks = c("(90,100]", "(70,90]", "(0,70]"),
                     labels = expression(BP>=90,70 <= BP * " < 90", BP < 70)) +
-  labs(title = "cp, 70 genes") +
+  labs(title = "Chloroplast, 70 genes") +
   theme(plot.title = element_text(hjust = 0.5),
         legend.position = "bottom") +
   geom_tree(data = d_ASTRAL) +
@@ -628,8 +605,6 @@ p_combined +
 #### Mitochondrial ML tree
 
 
-
-
 ```{r}
 #| echo: TRUE
 #| result: hide
@@ -638,8 +613,6 @@ p_combined +
 #| warning: FALSE
 #| fig.height: 6
 #| fig.cap: "Figure 3: mt species tree reconstruction"
-
-#!/usr/bin/env R
 
 ML_tree = phylogenetic_trees[["mt_ML"]][["tree"]]
 ML_tree = groupClade(ML_tree, 40)
@@ -694,7 +667,7 @@ p_combined = p_ML +
                     name = "Bootstrap",
                     breaks = c("(90,100]", "(70,90]", "(0,70]"),
                     labels = expression(BP>=90,70 <= BP * " < 90", BP < 70)) +
-  labs(title = "mt, 29 genes") +
+  labs(title = "Mitochondria, 29 genes") +
   theme(plot.title = element_text(hjust = 0.5),
         legend.position = "bottom") +
   geom_tree(data = d_ASTRAL) +
@@ -723,29 +696,30 @@ p_combined +
 
 :::
 
+In the tanglegrams above, the blue lines show the identical topology between ML and coalescence trees; the grey lines indicate difference in topology within species, and red lines indicate difference in topology between species.
 
+The set of 99 genes (chloroplast + mitochondria genes) manages to reconstruct correctly the *Ulva* species tree. The only deiscrepancy between ML and ASTRAL tree sits in the position of *Ulva fenestrata* (Ufene) and *Ulva* sp. 4 "Usp4" which clusters together in the ASTRAL tree, while they are assigned to different subclades in the ML tree.
 
+In the chloroplast trees (70 genes), there are not major differences between the ML and the ASTRAL tree regarding the species positioning. Howvever, the *Ulva* species tree cannot be completely reconstructed because the phylogenetic relationships between the clade containing "Ucali", "Uflex1", "Ulinz", "Utort", "Uprol2", "Uprol3" and the clade containing "Umeri6", "Umeri7", "Uprol1" and "Usp2" cannot be properly resolved.
 
-cp + mt good except for "Ufene" and "Usp4" position.
-cp cannot solve clade orders, while "species" refinition remane the same
-mt is a trainwreck
-
+The ML and ASTRAL mitochondrial trees (29 genes) are highly discordant, suggesting that the list of genomes and the genes available for *Ulva* isolates do not allow for proper reconstruction of the *Ulva* species tree.
 
 
 
 ### distances between reconstructed species trees
 
-
-Let's check how similar / different are the reconstructed trees.
+The tanglegrams provided a visual represenation of the concordance between the reconstructed *Ulva* species tree, but we can also calculate the similarities of the reconstructed trees.
 We will use four metrics:
 
-* "common_nodes_corr"
-* "RF"
-* "KF"
-* "MAST_%"
+* Correlation between common nodes, "common_nodes_corr"
+* [Robinson-Foulds](https://doi.org/10.1016/0025-5564(81)90043-2) distance, "RF"
+* [Kuhner-Felsenstein](https://doi.org/10.1093/oxfordjournals.molbev.a040126) distance, "KF"
+* Percentage of [Maximum Agreement Subtree](https://doi.org/10.1137%2FS0097539794269461), "MAST_%"
 
-First we calculate the distances:
+The correlation between the common nodes is calculated as the pairwise cophenetic correlation coefficient between the distance matrix and the cophenetic matrix of the common nodes. The RF distance measures the number of unique splits between two trees by comparing their bipartitions. It ranges from 0 (identical trees) to a higher value indicating greater dissimilarity with more unique splits. The KF index quantifies the average genetic differences per site between populations, considering genetic variation within and between populations to provide a quantitative measure of genetic distance. The MAST % identifies the subset of nodes and branches that are common to both trees, disregarding any additional or missing branches. It aims to find the largest possible subtree that can be extracted from both trees while preserving their structural similarities, representing the maximum level of agreement in their branching patterns.
 
+
+We can first calculate all the distances:
 
 
 ```{r}
@@ -753,10 +727,9 @@ First we calculate the distances:
 #| eval: TRUE
 #| result: hide
 #| code-fold: FALSE
+#| error: FALSE
 #| message: FALSE
 #| warning: FALSE
-
-#!/usr/bin/env R
 
 # get list of dendrograms to compare
 dendro_list = dendextend::dendlist(
@@ -871,8 +844,6 @@ Then we plot them based on the pairwise label sets between trees
 #| fig.height: 6
 #| fig.cap: "Figure 4: species trees distance based on pairwise label sets between trees"
 
-#!/usr/bin/env R
-
 # prepare plot layout
 layout(matrix(c(1, 2, 3, 4), nrow = 2, ncol = 2, byrow = TRUE))
 
@@ -907,9 +878,6 @@ for(i in 1:length(dist_DB_pairwise)){
   )
 }
 
-# reset layout
-par(mfrow = c(1, 1))
-
 
 ```
 
@@ -927,8 +895,6 @@ We can also see what are the distances if we restrict ourselves only to the isol
 #| warning: FALSE
 #| fig.height: 6
 #| fig.cap: "Figure 5: species trees distance based on overlapping cp+mt isolates"
-
-#!/usr/bin/env R
 
 # prepare plot layout
 layout(matrix(c(1, 2, 3, 4), nrow = 2, ncol = 2, byrow = TRUE))
@@ -963,48 +929,19 @@ for(i in 1:length(dist_DB_min_set_species)){
     cl.align.text = "l")
 }
 
-# reset layout
-par(mfrow = c(1, 1))
-
-
 ```
 
 
 
-### Prognosis Outcome 
-
-Of the 887 petients with kidney tumor, 659 were alive at the time of the last check up, while 228 died. It appears that KIRC patients (48.7% dead) have worse prognosis than KIRP patients (17.9% dead), as observed in the previous comparisons. However, before drawing a formal conclusion, we should validate this observation at least in another independent cohort.
-
-
-
-
-
-Trees estimated by the ML and coalescent methods were well-supported and congruent, although slightly different topologies were recovered for different methods applied for different datasets (cp, mt and cp+mt) (Fig.1, Fig. S3). For the cp+mt tree, the topology of ML and coalescent trees are mostly congruent. The difference in the topology happens mostly within large species clades, e.g., clade contains U. australis or U. compressa genomes. The notorious difference is the position of U.fene vs. Ulva sp4. The results from the correlation between the common nodes and MAST% are highly concordant. They indicate that the topology of phylogenetic trees constructed by the two methods (ML and coalescence) and different datasets (cp, mt and cp+mt) is highly similar, except for the topology of the mt phylogenetic tree constructed by the ML method (The correlation between the common nodes) and the coalescent method (MAST%). Results from RF and KF matrices are more varied, but both also show the topology of species tree constructed using mt genomes ML is less similar compared to other species trees.
-
-
-
-Figure 1. (A). Consensus Ulva species tree based on the (49) concatenated chloroplast and mitochondrial genomes. The colors of circle at each node show the confident level of supporting values (bootstrap value for ML tree and posterior value for coalescence tree). Black circles indicate nodes with at least 95% support while grey circles indicate nodes with support values in the range of 75-95% and white circles indicate nodes with support values less than 75%. The blue lines show the identical topology between ML and coalescence tree while grey lines indicate difference in topology within species and red lines indicate difference in topology between species. (B). Four metrics, namely the correlation between the common nodes (common_nodes_corr), Robinson-Foulds (RF), Kuhner-Felsenstein (KF), and Maximum Agreement Subtree (MAST) used to assess the concordance of the Ulva species tree reconstructed from supermatrix and coalescence-based analyses obtained from the analyses of chloroplast genes, mitochondrial genes and chloroplast and mitochondrial genes. Higher values in correlation between the common_nodes_corr and MAST indicate the higher similarity between topology while lower values in correlation between the RF and KF indicate the higher similarity between topology.
-
-
-
-
-
-
-Among the 70 cp genes chosen, the four indices RF, KF, MAST and the correlation between the common nodes metrics pointed out 24 unique cp genes that provide the most similar topology compared to the species tree constructed using 70 genes, namely accD, atpF, chlI, petB, psaA, psaB, psbB, psbD, rpl12, rpl19, rpl2, rpl32, rpoA, rpoB, rpoC1, rpoC2, rps12, rps2, rps4, rps8, rps9, tufA, ycf1, and ycf20 (Table 1). Among them, several genes such as psaA, psaB, and psbB are consistently identified by different matrices. Similarly, the same approach applied to the Ulva species trees reconstructed using mt suggested 19 unique mt genes, namely atp1, atp6, cob, cox1, cox2, cox3, nad2, nad4, nad5, nad7, rpl14, rpl16, rps10, rps11, rps14, rps19, rps2, rps3, and rps4, of which several genes such as atp6, cox1, cox2, rps3, and rps10 are suggested by different indices. Since the Ulva specimens used in this study do not always have both cp and mt genomes, the Ulva species trees reconstructed using cp and mt supermatrix have different set of tips, depending on the availability of the genomes. Prior analyses suggested that MAST% and common correlation nodes metrics are the best performers to assess phylogenetic tree distances when the tree do not have the same set of tips, we then selected (arbitrarily) 10 genes for the combinatorial approach, petB, psaA, psaB, psbB, psbD, rps2, atp6, cox1, cox2, and mt_rps3, based on the top 10 single gene ML trees with topology closest to cp_mt_ML. The first six genes are cp genes while the other four genes are mt genes. 
-
-
-
-From the combination of 2 to 10 selected genes, 1,013 species trees were generated (45 species trees for 2 genes, 120 species trees for 3 genes, 210 species trees for 4 genes, 252 species trees for 5 genes,210 species trees for 6 genes, 120 species trees for 7 genes, 45 species trees for 8 genes, 10 species trees for 9 genes and 1 species trees for 10 genes). After filtering for combinations containing both a cp and an mt marker, a total of 945 trees remained, comprising of 24 species trees for 2 genes, 96 species trees for 3 genes, 194 species trees for 4 genes, 246 species trees for 5 genes, 209 species trees for 6 genes, 120 species trees for 7 genes, 45 species trees for 8 genes, 10 species trees for 9 genes, and 1 species trees for 10 genes. For each combination, a representative combination with the highest the MAST% and the common node correlation are shown in the Table 2. The best combination to use for the development of Ulva organellar universal markers should be the combination with the highest values of the two indices and the lowest number of markers in the combination. The combination with five to eight markers has the highest value for the MAST% and the highest value for the common node correlation, but given the number of markers, it might pose more challenges for the development process later. The combination with four markers, psbD, psaA, cox1, cox2, which also has the highest value for the MAST% and has the value for the common node correlation slightly lower than the highest value, is chosen for the next step. This combination comprises of two cp genes, psbD, psaA, and two mt genes, cox1, cox2.
-
+The results indicate that the topology of *Ulva* species trees constructed by the two methods (ML and ASTRAL) with the cp+mt dataset is highly concordant. We therefore decide to use the cp+mt ML tree as true *Ulva* species tree for downstream analyses.
 
 
 ## Lessons Learnt {#sec-lesson-learnt-cp-and-mt-phylogeny-reconstruction}
+
 So far, we have learnt:
 
-* TCGA is a public resource with a wide collection of samples from cancer biopsies from patients affected by 32 different cancer types.
-* TCGA provides abundant molecular and clinical information for both biopsies and patients and it allows for patient stratification and therapeutic target discovery.
-* Cancers with kidneys as primary sites are the third most abundant samples available in TCGA (n = 1,030 samples), after breast (n = 1,246) and lung biopsies (n = 1,156), and provides an excellent yet challenging case-study.
-
+* we have reconstructed a *Ulva* species tree for the 15 *Ulva* species present in this study that we can use in downstream analyses to identify the species phylognetic markers;
+* the *Ulva* species tree reconstructed by combining 70 chloroplast genes and 29 mitochondrial genes is superior when compared to the species tree reconstructed using only the chloroplast or only the mitochondrial genes.
 
 
 
